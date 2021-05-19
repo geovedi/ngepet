@@ -1,6 +1,6 @@
 #property copyright "Copyright (c) 2021, Jim Geovedi."
 #property link "https://jim.geovedi.com"
-#property version "1.0"
+#property version "1.1"
 #property description "Trail Master EA"
 
 #include <Generic\SortedMap.mqh>
@@ -26,7 +26,8 @@ enum ENUM_CLOSINGS {
 };
 
 input ENUM_TRAILING_TYPES trailing_type = TRAIL_FIXED;  // Trailing Type
-input double trailing = 100.0;                          // Trailing Value
+input double trail_start = 200.0;                       // Trailing Start
+input double trail_stop = 50.0;                         // Trailing Stop
 input ENUM_CLOSINGS closing_mode = CLOSING_NONE;        // Trade Closing Mode
 input string closing_time = "22:00";                    // Trade Closing Time
 
@@ -81,12 +82,15 @@ void OnTimer() {
 }
 
 void Trailing() {
-  if (trailing <= 0)
+  if (trail_start <= 0)
     return;
 
-  double trail_risk = (trailing_type == TRAIL_PERCENT_BALANCE)
-                          ? (trailing / 100.0) * account.Balance()
-                          : trailing;
+  double start = (trailing_type == TRAIL_PERCENT_BALANCE)
+                          ? (trail_start / 100.0) * account.Balance()
+                          : trail_start;
+  double stop = (trailing_type == TRAIL_PERCENT_BALANCE)
+                          ? (trail_stop / 100.0) * account.Balance()
+                          : trail_stop;
 
   for (int i = PositionsTotal() - 1; i >= 0; i--) {
     if (position_info.SelectByIndex(i)) {
@@ -102,14 +106,14 @@ void Trailing() {
           records.TrySetValue(ticket, profit);
           PrintFormat("Update max profit: %.2f for ticket #%d", max_profit,
                       ticket);
-        } else if (profit > trail_risk) {
-          if (max_profit - profit >= trail_risk) {
+        } else if (profit > start) {
+          if (max_profit - profit >= stop) {
             trade.PositionClose(position_info.Ticket());
             PrintFormat("Closing ticket #%d with profit: %.2f (max: %.2f)",
                         ticket, profit, max_profit);
           }
         }
-      } else if (profit > trail_risk) {
+      } else if (profit > start) {
         records.Add(ticket, profit);
         PrintFormat("New max profit: %.2f for ticket #%d", profit, ticket);
       }
