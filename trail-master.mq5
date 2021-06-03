@@ -1,6 +1,6 @@
 #property copyright "Copyright (c) 2021, Jim Geovedi."
 #property link "https://jim.geovedi.com"
-#property version "1.1"
+#property version "1.2"
 #property description "Trail Master EA"
 
 #include <Generic\SortedMap.mqh>
@@ -26,12 +26,15 @@ enum ENUM_CLOSINGS {
 };
 
 input ENUM_TRAILING_TYPES trailing_type = TRAIL_FIXED;  // Trailing Type
-input double trail_start = 200.0;                       // Trailing Start
-input double trail_stop = 50.0;                         // Trailing Stop
-input ENUM_CLOSINGS closing_mode = CLOSING_NONE;        // Trade Closing Mode
-input string closing_time = "22:00";                    // Trade Closing Time
+input double pos_trailing = 50.0;     // Position Trailing Value
+input double min_pos_profit = 100.0;  // Min Position Profit Before Trailing
+input double eq_trailing = 300.0;     // Equity Trailing Value
+input double min_eq_profit = 500.0;   // Min Equity Profit Before Trailing
+input ENUM_CLOSINGS closing_mode = CLOSING_NONE;  // Trade Closing Mode
+input string closing_time = "22:00";              // Trade Closing Time
 
-CSortedMap<long, double> records;
+CSortedMap<long, double> pos_records;
+double eq_max_profit;
 
 int OnInit() {
   int tm = 15;
@@ -42,6 +45,7 @@ int OnInit() {
     PrintFormat("Event timer set: %d seconds", tm);
   }
 
+  eq_max_profit = account.Equity() - account.Balance();
   return (0);
 }
 
@@ -50,7 +54,8 @@ void OnDeinit(const int reason) {
 }
 
 void OnTimer() {
-  Trailing();
+  EquityTrailing();
+  PositionTrailing();
 
   bool past_closing_time = false;
 
@@ -71,26 +76,50 @@ void OnTimer() {
     if (closing_mode == CLOSING_WEEKLY && past_closing_time && is_friday)
       can_close = true;
 
-    if (can_close) {
-      for (int i = PositionsTotal() - 1; i >= 0; i--) {
-        if (position_info.SelectByIndex(i)) {
-          trade.PositionClose(position_info.Ticket());
-        }
-      }
+    if (can_close)
+      CloseAllPositions();
+  }
+}
+
+void CloseAllPositions() {
+  for (int i = PositionsTotal() - 1; i >= 0; i--) {
+    if (position_info.SelectByIndex(i)) {
+      trade.PositionClose(position_info.Ticket());
     }
   }
 }
 
-void Trailing() {
-  if (trail_start <= 0)
+void EquityTrailing() {
+  if (eq_trailing <= 0)
     return;
 
-  double start = (trailing_type == TRAIL_PERCENT_BALANCE)
-                          ? (trail_start / 100.0) * account.Balance()
-                          : trail_start;
-  double stop = (trailing_type == TRAIL_PERCENT_BALANCE)
-                          ? (trail_stop / 100.0) * account.Balance()
-                          : trail_stop;
+  double trail_limit = (trailing_type == TRAIL_PERCENT_BALANCE)
+                           ? (min_eq_profit / 100.0) * account.Balance()
+                           : min_eq_profit;
+
+  double trail_risk = (trailing_type == TRAIL_PERCENT_BALANCE)
+                          ? (eq_trailing / 100.0) * account.Balance()
+                          : eq_trailing;
+
+  double profit = account.Equity() - account.Balance();
+
+  if (eq_max_profit < profit)
+    eq_max_profit = profit;
+  else if (eq_max_profit > trail_limit && eq_max_profit - profit >= trail_risk)
+    CloseAllPositions();
+}
+
+void PositionTrailing() {
+  if (pos_trailing <= 0)
+    return;
+
+  double trail_limit = (trailing_type == TRAIL_PERCENT_BALANCE)
+                           ? (min_pos_profit / 100.0) * account.Balance()
+                           : min_pos_profit;
+
+  double trail_risk = (trailing_type == TRAIL_PERCENT_BALANCE)
+                          ? (pos_trailing / 100.0) * account.Balance()
+                          : pos_trailing;
 
   for (int i = PositionsTotal() - 1; i >= 0; i--) {
     if (position_info.SelectByIndex(i)) {
@@ -98,23 +127,22 @@ void Trailing() {
       double profit = position_info.Profit() + position_info.Swap() +
                       (position_info.Commission() * 2);
 
-      if (records.ContainsKey(ticket)) {
-        double max_profit = 0.0;
-        records.TryGetValue(ticket, max_profit);
+      if (pos_records.ContainsKey(ticket)) {
+        double pos_max_profit = 0.0;
+        pos_records.TryGetValue(ticket, pos_max_profit);
 
-        if (max_profit < profit) {
-          records.TrySetValue(ticket, profit);
-          PrintFormat("Update max profit: %.2f for ticket #%d", max_profit,
+        if (pos_max_profit < profit) {
+          pos_records.TrySetValue(ticket, profit);
+          PrintFormat("Update max profit: %.2f for ticket #%d", pos_max_profit,
                       ticket);
-        } else if (profit > start) {
-          if (max_profit - profit >= stop) {
-            trade.PositionClose(position_info.Ticket());
-            PrintFormat("Closing ticket #%d with profit: %.2f (max: %.2f)",
-                        ticket, profit, max_profit);
-          }
+        } else if (pos_max_profit > min_pos_profit &&
+                   pos_max_profit - profit >= trail_risk) {
+          trade.PositionClose(position_info.Ticket());
+          PrintFormat("Closing ticket #%d with profit: %.2f (max: %.2f)",
+                      ticket, profit, pos_max_profit);
         }
-      } else if (profit > start) {
-        records.Add(ticket, profit);
+      } else if (profit > trail_risk) {
+        pos_records.Add(ticket, profit);
         PrintFormat("New max profit: %.2f for ticket #%d", profit, ticket);
       }
     }
@@ -122,11 +150,11 @@ void Trailing() {
 
   ulong tickets[];
   double profits[];
-  records.CopyTo(tickets, profits);
+  pos_records.CopyTo(tickets, profits);
 
   for (int i = 0; i < ArraySize(tickets) - 1; i++) {
     if (!position_info.SelectByTicket(tickets[i])) {
-      records.Remove(tickets[i]);
+      pos_records.Remove(tickets[i]);
       PrintFormat("Remove unexisting ticket #%d", tickets[i]);
     }
   }
