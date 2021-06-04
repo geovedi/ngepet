@@ -1,3 +1,8 @@
+#include <Arrays\ArrayLong.mqh>
+#include <Generic\HashSet.mqh>
+#include <Trade\DealInfo.mqh>
+#include <Trade\HistoryOrderInfo.mqh>
+
 string TimeElapsedToString(const datetime pElapsedSeconds) {
   const long days = pElapsedSeconds / PeriodSeconds(PERIOD_D1);
 
