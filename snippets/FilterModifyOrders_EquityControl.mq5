@@ -11,22 +11,31 @@ For example, the function can do the following:
     need to be given unique ticket numbers.
 ************************************************************************************* */
 
-
 #include <Math\Stat\Normal.mqh>
 #include <Trade\SymbolInfo.mqh>
 
 CSymbolInfo symbol_info;
 
+double pnl[];
+double pnl_ma = 0;
+int deal_period = 20;
+datetime deal_update;
+datetime one_hour = 60 * 60;
+
 bool FilterModifyOrders(string Channel, OrderDef& currentOrders[]) {
-  int period = 20;
+  if ((TimeCurrent() - deal_update) > one_hour || ArraySize(pnl) == 0) {
+    PrintFormat("%s: updating pnl database...", __FUNCTION__);
+    if (!GetTradeResultsToArray(pnl, deal_period))
+      return (false);
 
-  double pnl[];
-  if (!GetTradeResultsToArray(pnl, period))
-    return (false);
+    ArraySetAsSeries(pnl, false);
+    ArrayPrint(pnl);
 
-  ArraySetAsSeries(pnl, true);
+    pnl_ma = iMAOnArray(pnl, deal_period, 0, MODE_LWMA, 0);
+    deal_update = TimeCurrent();
 
-  double pnl_ma = iMAOnArray(pnl, period, 0, MODE_LWMA, 0);
+    PrintFormat("pnl[0]=%f, pnl_ma=%f", pnl[0], pnl_ma);
+  }
 
   if ((pnl[0] > pnl_ma) || pnl_ma == 0)
     return (false);
@@ -64,7 +73,7 @@ int GetDigits(double var, int digits = 8) {
   return (digits);  // 2
 }
 
-bool GetTradeResultsToArray(double& pnl[], int period = 100) {
+bool GetTradeResultsToArray(double& trades[], int period = 100) {
   if (!HistorySelect(0, TimeCurrent()))
     return (false);
 
@@ -84,9 +93,9 @@ bool GetTradeResultsToArray(double& pnl[], int period = 100) {
         continue;
 
       if (deal_entry != DEAL_ENTRY_IN) {
-        int size = ArraySize(pnl);
-        ArrayResize(pnl, size + 1);
-        pnl[size] = deal_profit + prev_profit;
+        int size = ArraySize(trades);
+        ArrayResize(trades, size + 1);
+        trades[size] = deal_profit + prev_profit;
         prev_profit = deal_profit;
         if (size > period)
           break;
