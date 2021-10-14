@@ -81,7 +81,7 @@ bool GetTradeResultsToArray(double& trades[], int period = 100) {
   ulong ticket = 0;
   double prev_profit = 0.0;
 
-  for (uint i = total_deals - period; i < total_deals; i--) {
+  for (uint i = total_deals - period; i < total_deals; i++) {
     if ((ticket = HistoryDealGetTicket(i)) > 0) {
       ENUM_DEAL_ENTRY deal_entry =
           (ENUM_DEAL_ENTRY)HistoryDealGetInteger(ticket, DEAL_ENTRY);
