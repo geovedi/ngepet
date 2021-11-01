@@ -40,8 +40,9 @@ void WriteEquity() {
   datetime bar_time = iTime(_Symbol, _tf, bar_index);
   double equity = account.Equity();
 
-  string fname = StringFormat(
-      "%s\\%I64d.csv", AccountInfoString(ACCOUNT_SERVER), account.Login());
+  string fname = StringFormat("%s\\%I64d.csv",                   //
+                              AccountInfoString(ACCOUNT_SERVER), //
+                              account.Login());
 
   // https://www.mql5.com/en/forum/128204#comment_3315295
   int handle = FileOpen(fname, FILE_WRITE | FILE_READ | FILE_SHARE_READ |
