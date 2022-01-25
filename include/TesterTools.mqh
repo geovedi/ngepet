@@ -5,12 +5,37 @@
 //+------------------------------------------------------------------+
 
 #include <Math\Stat\Normal.mqh>
+#include <Math\Stat\Uniform.mqh>
 #include <Trade\DealInfo.mqh>
 #include <Trade\HistoryOrderInfo.mqh>
 
 #include "TradeHistory.mqh"
 
-CDealInfo deal_info;
+double SymmetryTrades() {
+  double longPL = TesterStatistics(STAT_PROFIT_LONGTRADES);
+  double shortPL = TesterStatistics(STAT_PROFIT_SHORTTRADES);
+
+  double maxProfit = 0;
+  double smallerProfit = 0;
+
+  if (longPL == shortPL) {
+    return 1.0;
+  } else if ((longPL > 0 && shortPL <= 0) || (longPL <= 0 && shortPL > 0)) {
+    return 0.0;
+  } else if (MathAbs(longPL) > MathAbs(shortPL)) {
+    maxProfit = MathAbs(longPL);
+    smallerProfit = MathAbs(shortPL);
+  } else {
+    maxProfit = MathAbs(shortPL);
+    smallerProfit = MathAbs(longPL);
+  }
+
+  if (smallerProfit < 0 && maxProfit >= 0) {
+    return 0;
+  }
+
+  return smallerProfit / maxProfit;
+}
 
 bool GetTrades(double &trades[], int min_level = 0) {
   CHistoryPositionInfo pos;
@@ -135,7 +160,7 @@ double FilteredRollingLR(int min_level = 0, int min_trades = 30) {
   if (n_trades < min_trades)
     return (score);
 
-  int chunk_size = 100;
+  int chunk_size = 50;
   int n_chunks = (int)MathFloor(n_trades / chunk_size);
 
   double chunk_scores[];
@@ -252,4 +277,91 @@ double NormalizedProfitFactor() {
               __FUNCTION__, gross_profit, gross_loss, score);
 
   return (score);
+}
+
+#define NSAMPLES 10000 // number of samples in Monte Carlo method
+#define NADD 30
+
+double MonteCarloScore() {
+  double k[];
+
+  if (!MCSetKS(k))
+    return -1.0;
+
+  if (ArraySize(k) < 30)
+    return -1.0;
+
+  MathSrand(GetTickCount());
+
+  // total profit median + interquartile range parameter
+  double km[], cn[NSAMPLES];
+  int nk = ArraySize(k);
+  ArrayResize(km, nk);
+
+  for (int n = 0; n < NSAMPLES; ++n) {
+    MCSample(k, km);
+    cn[n] = 1.0;
+    for (int i = 0; i < nk; ++i)
+      cn[n] *= km[i];
+    cn[n] -= 1.0;
+  }
+
+  ArraySort(cn);
+
+  return cn[(int)(0.5 * NSAMPLES)] /
+         (cn[(int)(0.75 * NSAMPLES)] - cn[(int)(0.25 * NSAMPLES)]);
+}
+
+void MCSample(double &a[], double &b[]) {
+  int ner;
+  double dnc;
+  int na = ArraySize(a);
+
+  for (int i = 0; i < na; ++i) {
+    dnc = MathRandomUniform(0, na, ner);
+    if (!MathIsValidNumber(dnc)) {
+      Print("MathIsValidNumber(dnc) error ", ner);
+      return;
+    }
+
+    int nc = (int)dnc;
+    if (nc == na)
+      nc = na - 1;
+
+    b[i] = a[nc];
+  }
+}
+
+bool MCSetKS(double &k[]) {
+  if (!HistorySelect(0, TimeCurrent()))
+    return false;
+  uint nhd = HistoryDealsTotal();
+  int nk = 0;
+  ulong hdticket;
+  double capital = TesterStatistics(STAT_INITIAL_DEPOSIT);
+  long hdtype;
+  double hdcommission, hdswap, hdprofit, hdprofit_full;
+  for (uint n = 0; n < nhd; ++n) {
+    hdticket = HistoryDealGetTicket(n);
+    if (hdticket == 0)
+      continue;
+
+    if (!HistoryDealGetInteger(hdticket, DEAL_TYPE, hdtype))
+      return false;
+    if (hdtype != DEAL_TYPE_BUY && hdtype != DEAL_TYPE_SELL)
+      continue;
+
+    hdcommission = HistoryDealGetDouble(hdticket, DEAL_COMMISSION);
+    hdswap = HistoryDealGetDouble(hdticket, DEAL_SWAP);
+    hdprofit = HistoryDealGetDouble(hdticket, DEAL_PROFIT);
+    if (hdcommission == 0.0 && hdswap == 0.0 && hdprofit == 0.0)
+      continue;
+
+    ++nk;
+    ArrayResize(k, nk, NADD);
+    hdprofit_full = hdcommission + hdswap + hdprofit;
+    k[nk - 1] = 1.0 + hdprofit_full / capital;
+    capital += hdprofit_full;
+  }
+  return true;
 }
