@@ -5,14 +5,40 @@
 //+------------------------------------------------------------------+
 
 #include <Trade\AccountInfo.mqh>
+#include <Trade\OrderInfo.mqh>
 #include <Trade\PositionInfo.mqh>
 #include <Trade\SymbolInfo.mqh>
 #include <Trade\Trade.mqh>
 
 CAccountInfo account;
+COrderInfo order_info;
 CPositionInfo position_info;
 CSymbolInfo symbol_info;
 CTrade trade;
+CDealInfo deal_info;
+
+void GetLastNDeals(double &trades[], ulong magic = 0, int limit = 20) {
+  HistorySelect(INT_MIN, INT_MAX);
+
+  for (int i = HistoryDealsTotal() - 1; i >= 0; i--) {
+    deal_info.Ticket(HistoryDealGetTicket(i));
+
+    if (magic > 0 && deal_info.Magic() != magic)
+      continue;
+
+    if (deal_info.Entry() == DEAL_ENTRY_OUT) {
+      double profit = deal_info.Profit() //
+                      + deal_info.Swap() //
+                      + (2 * deal_info.Commission());
+
+      int size = ArraySize(trades);
+      ArrayResize(trades, size + 1);
+      trades[size] = profit;
+      if (size + 1 > limit)
+        break;
+    }
+  }
+}
 
 double GetLastPositionPrice(string symbol, ulong magic_number,
                             ENUM_POSITION_TYPE pos) {
@@ -49,6 +75,18 @@ int CountPositionsByType(string symbol, ulong magic_number,
   return (count);
 }
 
+void CloseOrdersByType(string symbol, ulong magic_number,
+                       ENUM_ORDER_TYPE order) {
+  for (int i = OrdersTotal() - 1; i >= 0; i--) {
+    if (order_info.SelectByIndex(i)) {
+      if ((order_info.Magic() == magic_number) &&
+          (order_info.Symbol() == symbol) && order_info.OrderType() == order) {
+        trade.OrderDelete(order_info.Ticket());
+      }
+    }
+  }
+}
+
 void ClosePositionsByType(string symbol, ulong magic_number,
                           ENUM_POSITION_TYPE pos) {
   for (int i = PositionsTotal() - 1; i >= 0; i--) {
@@ -74,6 +112,7 @@ bool InSession(int session_start, int session_length, bool day_filter = false) {
   TimeToStruct(TimeTradeServer(), now);
 
   if (day_filter) {
+    /*
     if (!_sunday && now.day_of_week == SUNDAY)
       return (false);
 
@@ -94,6 +133,7 @@ bool InSession(int session_start, int session_length, bool day_filter = false) {
 
     if (!_saturday && now.day_of_week == SATURDAY)
       return (false);
+    */
   }
 
   if (wrap && (now.hour < session_start && now.hour > end))
@@ -192,8 +232,10 @@ bool PrepareOrder(string symbol, ulong magic_number, ENUM_ORDER_TYPE order,
   double volume_limit = symbol_info.LotsLimit();
   int volume_digits = GetDigits(symbol_info.LotsMin());
 
+  volume = NormalizeDouble(volume, volume_digits);
+
   if (volume_total + volume > volume_limit && volume_limit > 0) {
-    PrintFormat("[WARNING] %s: Total volume=%s is larger than volume limt=%s",
+    PrintFormat("[WARNING] %s: Total volume=%s is larger than volume limit=%s",
                 __FUNCTION__,
                 DoubleToString(volume + volume_total, volume_digits),
                 DoubleToString(volume_limit, volume_digits));
@@ -252,6 +294,8 @@ bool SendOrder(string symbol, ulong magic_number, ENUM_ORDER_TYPE order,
   trade.SetExpertMagicNumber(magic_number);
   trade.SetTypeFillingBySymbol(symbol);
 
+  datetime expiration = TimeCurrent() + PeriodSeconds(PERIOD_D1);
+
   switch (order) {
   case ORDER_TYPE_BUY:
     success = trade.Buy(volume, symbol, price, sl, tp, comment);
@@ -261,19 +305,19 @@ bool SendOrder(string symbol, ulong magic_number, ENUM_ORDER_TYPE order,
     break;
   case ORDER_TYPE_BUY_STOP:
     success = trade.BuyStop(volume, price, symbol, sl, tp, //
-                            ORDER_TIME_GTC, 0, comment);
+                            ORDER_TIME_SPECIFIED, expiration, comment);
     break;
   case ORDER_TYPE_SELL_STOP:
     success = trade.SellStop(volume, price, symbol, sl, tp, //
-                             ORDER_TIME_GTC, 0, comment);
+                             ORDER_TIME_SPECIFIED, expiration, comment);
     break;
   case ORDER_TYPE_BUY_LIMIT:
     success = trade.BuyLimit(volume, price, symbol, sl, tp, //
-                             ORDER_TIME_GTC, 0, comment);
+                             ORDER_TIME_SPECIFIED, expiration, comment);
     break;
   case ORDER_TYPE_SELL_LIMIT:
     success = trade.SellLimit(volume, price, symbol, sl, tp, //
-                              ORDER_TIME_GTC, 0, comment);
+                              ORDER_TIME_SPECIFIED, expiration, comment);
     break;
   default:
     break;
@@ -384,13 +428,15 @@ double GetVolumeTotal(string symbol) {
 
 string BooleanToString(bool value) { return (value ? "true" : "false"); }
 
-void CommentLabel(long chart_id, string comment_text) {
+void CommentLabel(string comment_text) {
   string comment_label;
   int comment_index = 0;
 
   if (comment_text == "") {
     return;
   }
+
+  long chart_id = ChartID();
 
   while (ObjectFind(chart_id, StringFormat("label%d", comment_index)) >= 0) {
     comment_index++;
