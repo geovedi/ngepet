@@ -220,29 +220,31 @@ def main(start_date="2021.04.01", end_date="2022.02.01",
                 #kill_tester()
 
                 res = None
+                n_trial = 0
+
                 while res is None:
                     try:
-                        for n_trial in range(max_retry):
-                            print(f"... trial={n_trial}\n")
+                        print(f"... trial={n_trial}\n")
 
-                            cfg = CONFIG
-                            cfg = cfg.replace("__SYMBOL__", symbol)
-                            cfg = cfg.replace("__START_DATE__", start_date)
-                            cfg = cfg.replace("__END_DATE__", end_date)
-                            cfg = cfg.replace("__MAGIC__", str(magic))
-                            cfg = cfg.replace("__REPORT__", report_file)
-                            cfg = cfg.replace("__CONFIG_NAME__", config_file)
-                            
-                            with open(run_config, 'w') as out:
-                                out.write(cfg)
+                        cfg = CONFIG
+                        cfg = cfg.replace("__SYMBOL__", symbol)
+                        cfg = cfg.replace("__START_DATE__", start_date)
+                        cfg = cfg.replace("__END_DATE__", end_date)
+                        cfg = cfg.replace("__MAGIC__", str(magic))
+                        cfg = cfg.replace("__REPORT__", report_file)
+                        cfg = cfg.replace("__CONFIG_NAME__", config_file)
+                        
+                        with open(run_config, 'w') as out:
+                            out.write(cfg)
 
-                            cmd_out = check_output(
-                                f"{BIN_PATH}\\terminal64.exe /config:{run_config}"
-                            )
-                            res = read_xml(f"{TERMINAL_DIR}\\reports\\{report_file}.forward.xml", 
-                                           magic, seq)
-                            if res is not None:
-                                break
+                        cmd_out = check_output(
+                            f"{BIN_PATH}\\terminal64.exe /config:{run_config}"
+                        )
+                        res = read_xml(f"{TERMINAL_DIR}\\reports\\{report_file}.forward.xml", 
+                                       magic, seq)
+                        if res is not None:
+                            break
+                        n_trial += 1
                     except Exception as e:
                         print(e)
     
