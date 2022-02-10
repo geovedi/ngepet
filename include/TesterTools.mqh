@@ -37,11 +37,8 @@ double SymmetryTrades() {
   return smallerProfit / maxProfit;
 }
 
-bool GetTrades(double &trades[], int min_level = 0) {
+bool GetTrades(double &trades[], datetime start_date, datetime end_date) {
   CHistoryPositionInfo pos;
-
-  datetime start_date = StringToTime("1970.01.01 00:00");
-  datetime end_date = TimeCurrent();
 
   if (!pos.HistorySelect(start_date, end_date)) {
     PrintFormat("[ERROR] %s(): Failed to select history from %s to %s",
@@ -52,21 +49,66 @@ bool GetTrades(double &trades[], int min_level = 0) {
   int total = pos.PositionsTotal();
   for (int i = 0; i < total; i++) {
     if (pos.SelectByIndex(i)) {
-      if ((int)pos.OpenComment() >= min_level) {
-        int size = ArraySize(trades);
-        ArrayResize(trades, size + 1);
-        trades[size] = pos.Profit() + pos.Swap() + (2 * pos.Commission());
-      }
+      int size = ArraySize(trades);
+      ArrayResize(trades, size + 1);
+      trades[size] = pos.Profit() + pos.Swap() + (2 * pos.Commission());
     }
   }
 
   return (true);
 }
 
-double FilteredScore(int min_level = 0, int min_trades = 30) {
+double RollingSQN(int period = 30, int gap = 15, bool overlap = false) {
+  HistorySelect(INT_MIN, INT_MAX);
+  deal_info.Ticket(HistoryDealGetTicket(0));
+  datetime start_date = deal_info.Time();
+
+  double returns[];
+  ArrayInitialize(returns, 0);
+
+  while (start_date < TimeCurrent()) {
+    datetime end_date = start_date + (period * PeriodSeconds(PERIOD_D1));
+    double pr[];
+    if (!GetTrades(pr, start_date, end_date))
+      break;
+
+    // double sc = MathSum(pr);
+    double sc =
+        (MathSqrt(ArraySize(pr)) * MathMean(pr)) / MathStandardDeviation(pr);
+    if (!MathIsValidNumber(sc))
+      sc = 0;
+
+    int size = ArraySize(returns);
+    ArrayResize(returns, size + 1);
+    returns[size] = sc;
+    
+    if (overlap)
+      start_date = end_date - (gap * PeriodSeconds(PERIOD_D1));
+    else
+      start_date = end_date + (gap * PeriodSeconds(PERIOD_D1));
+  }
+
+  if (ArraySize(returns) == 0)
+    return 0;
+
+  double score = (MathSqrt(ArraySize(returns)) * MathMean(returns)) /
+                 MathStandardDeviation(returns);
+  if (!MathIsValidNumber(score))
+    return 0;
+
+  PrintFormat("%d days period, %d days gap:", period, gap);
+  ArrayPrint(returns);
+
+  return MathMax(score, 0);
+}
+
+double FilteredScore(int min_trades = 30) {
   double trades[], score = -1.0;
 
-  if (!GetTrades(trades, min_level))
+  datetime start_date = StringToTime("1970.01.01 00:00");
+  datetime end_date = TimeCurrent();
+
+  if (!GetTrades(trades, start_date, end_date))
     return (score);
 
   int n_trades = ArraySize(trades);
@@ -85,11 +127,13 @@ double FilteredScore(int min_level = 0, int min_trades = 30) {
   return (score);
 }
 
-double FilteredRMultiple(int min_level = 0, int min_trades = 30,
-                         double risk = 10.0) {
+double FilteredRMultiple(int min_trades = 30, double risk = 10.0) {
   double trades[], score = -1.0;
 
-  if (!GetTrades(trades, min_level))
+  datetime start_date = StringToTime("1970.01.01 00:00");
+  datetime end_date = TimeCurrent();
+
+  if (!GetTrades(trades, start_date, end_date))
     return (score);
 
   int n_trades = ArraySize(trades);
@@ -123,10 +167,13 @@ double FilteredRMultiple(int min_level = 0, int min_trades = 30,
   return (score);
 }
 
-double FilteredLR(int min_level = 0, int min_trades = 30) {
+double FilteredLR(int min_trades = 30) {
   double trades[], score = -1.0;
 
-  if (!GetTrades(trades, min_level))
+  datetime start_date = StringToTime("1970.01.01 00:00");
+  datetime end_date = TimeCurrent();
+
+  if (!GetTrades(trades, start_date, end_date))
     return (score);
 
   int n_trades = ArraySize(trades);
@@ -149,10 +196,13 @@ double FilteredLR(int min_level = 0, int min_trades = 30) {
   return (score);
 }
 
-double FilteredRollingLR(int min_level = 0, int min_trades = 30) {
+double FilteredRollingLR(int min_trades = 30) {
   double trades[], score = -1.0;
 
-  if (!GetTrades(trades, min_level))
+  datetime start_date = StringToTime("1970.01.01 00:00");
+  datetime end_date = TimeCurrent();
+
+  if (!GetTrades(trades, start_date, end_date))
     return (score);
 
   int n_trades = ArraySize(trades);
@@ -241,7 +291,10 @@ bool CalculateStdError(double &data[], double a_coef, double b_coef,
 double NormalizedProfitFactor() {
   double trades[], score = -1.0;
 
-  if (!GetTrades(trades))
+  datetime start_date = StringToTime("1970.01.01 00:00");
+  datetime end_date = TimeCurrent();
+
+  if (!GetTrades(trades, start_date, end_date))
     return (score);
 
   int n_trades = ArraySize(trades);
@@ -364,4 +417,24 @@ bool MCSetKS(double &k[]) {
     capital += hdprofit_full;
   }
   return true;
+}
+
+double CSTS() {
+  double avg_win = TesterStatistics(STAT_GROSS_PROFIT) /
+                   TesterStatistics(STAT_PROFIT_TRADES);
+  double avg_loss =
+      -TesterStatistics(STAT_GROSS_LOSS) / TesterStatistics(STAT_LOSS_TRADES);
+  double win_perc = 100.0 * TesterStatistics(STAT_PROFIT_TRADES) /
+                    TesterStatistics(STAT_TRADES);
+
+  //  Calculated safe ratio for this percentage of profitable deals:
+  double teor = (110.0 - win_perc) / (win_perc - 10.0) + 1.0;
+
+  //  Calculate real ratio:
+  double real = avg_win / avg_loss;
+
+  //  CSTS:
+  double tssf = real / teor;
+
+  return (tssf);
 }
