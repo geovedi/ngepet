@@ -169,8 +169,9 @@ def read_xml(fname, magic, seq):
     df['score'] = df[rescol].std(axis=1)
     df = df[(df['score']) < (df['score'].mean())]
     df = df.sort_values(['profit'], ascending=(False))
-    df = df.iloc[:30]
-    df = df.sort_values(['score', 'Forward Result'], ascending=(True, False))
+    if seq > 3:
+        df = df.iloc[:30]
+        df = df.sort_values(['score', 'Back Result'], ascending=(True, False))
     print(df.head())
 
     if df.empty:
