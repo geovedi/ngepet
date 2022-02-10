@@ -11,7 +11,7 @@ The interesting thing is even with an 80% failure rate, breakouts can still be p
 if the successful breakouts lead to big trends.
 
 So, to eliminate some of the failed breakouts, this entry uses the ADX indicator as an additional criteria. 
-ADX is supposed to measure the current trendiness of the price – a higher value means a larger trend is in progress.
+ADX is supposed to measure the current trendiness of the price -- a higher value means a larger trend is in progress.
 
 The entry will only take a signal if the ADX is indicating a non-trending period. 
 This might seem counter intuitive, but the idea is that breakouts during a flat period may be more likely to produce big trends.
