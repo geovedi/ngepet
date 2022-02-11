@@ -46,12 +46,15 @@ Jump 25 Index
 Jump 50 Index
 Jump 75 Index
 Jump 100 Index
+'''.strip().split("\n")
+
+'''
 Volatility 10 Index
 Volatility 25 Index
 Volatility 50 Index
 Volatility 75 Index
 Volatility 100 Index
-'''.strip().split("\n")
+'''
 
 SYMBOLS = DERIV_INDEX
 
@@ -136,19 +139,20 @@ ShutdownTerminal=1
 ; Generic Setting
 _risk_type=0||0||0||2||N
 _risk_value=100||10.0||1.0||100.0||N
+_expire=1
 ; Single Strategy Setting
-_symbol_name=
+_symbol_name=__SYMBOL__
 _magic_number=__MAGIC__
 _session_start=22||0||2||22||Y
-_session_length=8||4||2||22||Y
-_lookback=11||5||1||15||Y
+_session_length=8||4||4||20||Y
+_lookback=15||5||5||20||Y
 _adx_tf=12||5||0||30||Y
 _adx_period=7||5||2||15||Y
-_adx_level=16||15||1||25||Y
+_adx_level=15||15||5||25||Y
 _atr_tf=5||5||0||30||Y
 _atr_period=9||5||2||15||Y
 _atr_factor=2||2.0||1.0||5.0||Y
-_rr_ratio=6||2.0||2.0||6.0||Y
+_rr_ratio=6||3.0||1.0||6.0||Y
 ; Portfolio Strategy
 _config=__CONFIG_NAME__
 
@@ -167,18 +171,19 @@ def read_xml(fname, magic, seq):
     df = df[df['profit'] > 0]
     rescol = ['Forward Result', 'Back Result']
     df['score'] = df[rescol].std(axis=1)
+    #df['score'] = df['Back Result']
     df = df[(df['score']) < (df['score'].mean())]
-    df = df.sort_values(['profit'], ascending=(False))
-    if seq > 3:
-        df = df.iloc[:30]
-        df = df.sort_values(['score', 'Back Result'], ascending=(True, False))
+    df = df.sort_values(['score'], ascending=(True))
+    #if seq > 3:
+    df = df.iloc[:20]
+    df = df.sort_values(['profit', 'Back Result'], ascending=(False, False))
     print(df.head())
 
     if df.empty:
         return None
 
     row = df.iloc[0].to_dict()
-    rr_ratio = row.get('_rr_ratio', 1.0)
+    rr_ratio = row.get('_rr_ratio', 3.0)
 
     return (f'{row["_symbol"]},'
             f'{magic},'
@@ -191,7 +196,7 @@ def read_xml(fname, magic, seq):
             f'{row["_atr_tf"]},'
             f'{row["_atr_period"]},'
             f'{row["_atr_factor"]:.2f},'
-            f'{row["_rr_ratio"]:.2f}'
+            f'{rr_ratio:.2f}'
             )
 
 
