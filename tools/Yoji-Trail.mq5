@@ -54,13 +54,15 @@ int OnInit() {
   if (emergency_button)
     DisplayEmergencyCloseButtons();
 
-  eq_max_profit = account.Equity() - account.Balance();
-  PrintFormat("[DEBUG] %s: Initial max equity profit: %.2f", __FUNCTION__,
-              eq_max_profit);
+  eq_max_profit = 0;
   return (0);
 }
 
-void OnDeinit(const int reason) { EventKillTimer(); }
+void OnDeinit(const int reason) {
+  EventKillTimer();
+  ObjectsDeleteAll(0, "EmergencyStop", -1, -1);
+  ChartRedraw(0);
+}
 
 void OnTimer() {
   EquityTrailing();
