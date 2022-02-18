@@ -58,7 +58,8 @@ bool GetTrades(double &trades[], datetime start_date, datetime end_date) {
   return (true);
 }
 
-double RollingSQN(int period = 30, int gap = 15, bool overlap = false) {
+double RollingSQN(int period = 30, int gap = 15, bool overlap = false,
+                  double last = 0) {
   HistorySelect(INT_MIN, INT_MAX);
   deal_info.Ticket(HistoryDealGetTicket(0));
   datetime start_date = deal_info.Time();
@@ -69,6 +70,7 @@ double RollingSQN(int period = 30, int gap = 15, bool overlap = false) {
   while (start_date < TimeCurrent()) {
     datetime end_date = start_date + (period * PeriodSeconds(PERIOD_D1));
     double pr[];
+
     if (!GetTrades(pr, start_date, end_date))
       break;
 
@@ -81,7 +83,7 @@ double RollingSQN(int period = 30, int gap = 15, bool overlap = false) {
     int size = ArraySize(returns);
     ArrayResize(returns, size + 1);
     returns[size] = sc;
-    
+
     if (overlap)
       start_date = end_date - (gap * PeriodSeconds(PERIOD_D1));
     else
@@ -91,13 +93,37 @@ double RollingSQN(int period = 30, int gap = 15, bool overlap = false) {
   if (ArraySize(returns) == 0)
     return 0;
 
-  double score = (MathSqrt(ArraySize(returns)) * MathMean(returns)) /
-                 MathStandardDeviation(returns);
-  if (!MathIsValidNumber(score))
-    return 0;
+  if (last > 0) {
+    int size = ArraySize(returns);
+    double arr[];
+    int new_size = (int)MathCeil(last * size);
+    ArrayResize(arr, new_size);
+    ArrayCopy(arr, returns, 0, size - new_size);
+    ArrayCopy(returns, arr, 0, 0);
+  }
 
   PrintFormat("%d days period, %d days gap:", period, gap);
   ArrayPrint(returns);
+
+  /*
+    double score = (MathSqrt(ArraySize(returns)) * MathMean(returns)) /
+                   MathStandardDeviation(returns);
+    if (!MathIsValidNumber(score))
+      return 0;
+  */
+
+  // CRITERION_LR
+  double a, b, std_error;
+  double chart[];
+
+  if (!CalculateLinearRegression(returns, chart, a, b))
+    return (0.0);
+
+  if (!CalculateStdError(chart, a, b, std_error))
+    return (0.0);
+
+  double score = (std_error == 0.0) ? a * ArraySize(returns)
+                                    : a * ArraySize(returns) / std_error;
 
   return MathMax(score, 0);
 }
