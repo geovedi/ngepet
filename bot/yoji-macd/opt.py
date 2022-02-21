@@ -185,9 +185,16 @@ def read_xml(fname, magic):
 
     df = df[(df['Forward Result'] > 0.0) & (df['Back Result'] > 0.0)]
 
-    df = df.drop_duplicates(subset=['Back Result', 'Profit'], keep='last')
-    df = df.drop_duplicates(subset=['Forward Result', 'Profit'], keep='last')
+    df = df.drop_duplicates(subset=['Back Result', 'Profit'], keep='first')
+    df = df.drop_duplicates(subset=['Forward Result', 'Profit'], keep='first')
 
+    rescol = ['Forward Result', 'Back Result']
+    df['score'] = df[rescol].std(axis=1)
+    sm = df['score'].mean()
+    ss = df['score'].std()
+    df = df[(df['score'] > sm) & (df['score'] < sm + ss)]
+
+    '''
     brm = df['Back Result'].mean()
     brs = df['Back Result'].std()
     df = df[(df['Back Result'] > brm) & (df['Back Result'] < brm + brs)]
@@ -195,6 +202,7 @@ def read_xml(fname, magic):
     frm = df['Forward Result'].mean()
     frs = df['Forward Result'].std()
     df = df[(df['Forward Result'] > frm) & (df['Forward Result'] < frm + frs)]
+    '''
 
     df = df.sort_values(['Back Result'], ascending=(False))
 
@@ -230,8 +238,8 @@ def read_xml(fname, magic):
 def main(start_date="2021.04.01",
          end_date="2022.02.01",
          base_magic=100,
-         max_span_config=3,
-         month_span=5,
+         max_span_config=1,
+         range_span=24,
          run_config='run.ini',
          exp_name='exp'):
 
@@ -244,9 +252,9 @@ def main(start_date="2021.04.01",
     report_file = f"{exp_name}.xml"
     config_file = f"{exp_name}.cfg"
 
-    for r in arrow.Arrow.range('month', start, end):
-        e = r.shift(months=month_span)
-        f = e.shift(months=-2)
+    for r in arrow.Arrow.range('weeks', start, end):
+        e = r.shift(weeks=range_span)
+        f = e.shift(weeks=-8)
 
         if e > end:
             break
@@ -255,7 +263,7 @@ def main(start_date="2021.04.01",
         ed = e.strftime("%Y.%m.%d")
 
         with open(f"{CONFIG_DIR}\\{config_file}", "a") as out:
-            out.write(f"\n# {start_date} / {fd} / {ed}\n")
+            out.write(f"# {start_date} / {fd} / {ed}\n")
 
         n_cfg = 0
         while n_cfg < max_span_config:
