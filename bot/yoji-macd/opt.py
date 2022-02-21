@@ -14,17 +14,12 @@ from fire import Fire
 
 
 TERMINAL_ID = "D0E8209F77C8CF37AD8BF550E51FF075"
-TERMINAL_DIR = (
-    "C:\\Users\\Administrator\\AppData\\Roaming\\MetaQuotes\\Terminal\\"
-    f"{TERMINAL_ID}")
-TESTER_DIR = (
-    "C:\\Users\\Administrator\\AppData\\Roaming\\MetaQuotes\\Tester\\"
-    f"{TERMINAL_ID}")
-CONFIG_DIR = (
-    "C:\\Users\\Administrator\\AppData\\Roaming\\MetaQuotes\\Terminal\\Common\\Files"
-    )
-BIN_PATH = "C:\\Program Files\\MetaTrader 5"
 
+BIN_PATH = "C:\\Program Files\\MetaTrader 5"
+INSTALL_DIR = "C:\\Users\\Administrator\\AppData\\Roaming\\MetaQuotes"
+TERMINAL_DIR = f"{INSTALL_DIR}\\Terminal\\{TERMINAL_ID}"
+TESTER_DIR = f"{INSTALL_DIR}\\Tester\\{TERMINAL_ID}"
+CONFIG_DIR = f"{INSTALL_DIR}\\Terminal\\Common\\Files"
 
 FOREX_MAJOR = '''
 AUDUSD EURUSD GBPUSD NZDUSD USDCAD USDCHF USDJPY XAUUSD
@@ -129,7 +124,7 @@ Optimization=2
 Model=1
 FromDate=__START_DATE__
 ToDate=__END_DATE__
-ForwardMode=1
+ForwardMode=2
 Deposit=3000
 Currency=USD
 ProfitInPips=0
@@ -144,23 +139,25 @@ ShutdownTerminal=1
 
 [TesterInputs]
 ; Generic Setting
-_risk_type=1
-_risk_value=2||10||1.0||100.0||N
+_risk_type=0
+_risk_value=250.0||10||1.0||100.0||N
+_max_risk=250.0
 _close_all_button=true
+_min_profit=0
 ; Single Strategy Setting
 _symbol_name=__SYMBOL__
 _magic_number=__MAGIC__
 _session_start=22||0||2||22||Y
-_session_length=4||4||4||20||Y
-_tf=30||5||0||16385||Y
+_session_length=12||8||4||20||Y
+_tf=30||15||0||16385||Y
 _trend_period=200||50||50||300||Y
-_macd_fast=4||3||1||12||Y
-_macd_slow=38||12||4||40||Y
-_macd_sma=11||3||2||12||Y
+_macd_fast=12||2||2||18||Y
+_macd_slow=26||12||4||40||Y
+_macd_sma=9||7||2||13||Y
 _adx_period=10||10||5||15||Y
-_adx_smoothing=10||5||5||25||Y
+_adx_smoothing=10||10||10||50||Y
 _atr_period=15||7||2||15||N
-_atr_factor=2.0||1.0||1.0||3.0||Y
+_atr_factor=2.0||0.25||0.25||5.0||Y
 ; Portfolio Strategy
 _config=__CONFIG_NAME__
 
@@ -174,15 +171,20 @@ def read_xml(fname, magic):
     if '_exit_mom' in df.columns:
         df['_exit_mom'] = df['_exit_mom'].apply(lambda x: True if x == 'true' else False)
 
-    df = df[(df['Forward Result'] > 1.0) & (df['Back Result'] > 1.0)]
-    df['profit'] = np.floor(df['Profit'] / 2000) * 2000
-    df = df[df['profit'] > 0]
-    rescol = ['Forward Result', 'Back Result']
-    df['score'] = df[rescol].std(axis=1)
-    df = df[(df['score']) < (df['score'].mean())]
-    df = df.sort_values(['score'], ascending=(True))
-    df = df.iloc[:30]
-    df = df.sort_values(['profit', 'Back Result'], ascending=(False, False))
+    df = df[(df['Forward Result'] > 0.0) & (df['Back Result'] > 0.0)]
+
+    df = df.drop_duplicates(subset=['Forward Result', 'Profit'], keep='last')
+
+    brm = df['Back Result'].mean()
+    brs = df['Back Result'].std()
+    df = df[(df['Back Result'] > brm) & (df['Back Result'] < brm + brs)]
+
+    frm = df['Forward Result'].mean()
+    frs = df['Forward Result'].std()
+    df = df[(df['Forward Result'] > frm) & (df['Forward Result'] < frm + frs)]
+    
+    df = df.sort_values(['Forward Result'], ascending=(False))
+
     if not df.empty:
         print(df.head())
 
@@ -211,60 +213,73 @@ def read_xml(fname, magic):
         f'{row["_atr_period"]},'
         f'{row["_atr_factor"]:.2f}'
     )
-    return (cfg, row["profit"])
+    return cfg
 
 
-def main(start_date="2021.06.01", end_date="2022.02.01", 
-         base_magic=100, max_iter=5, max_portfolio=10,
+def main(start_date="2021.04.01", end_date="2022.02.01", 
+         base_magic=100, max_iter=3, month_span=3,
          run_config='run.ini', exp_name='exp'):
 
-    for n_iter in range(max_iter):
-        report_file = f"{exp_name}_{n_iter:02d}.xml"
-        config_file = f"{exp_name}_{n_iter:02d}.cfg"
+    reset_env()
 
-        with open(f"{CONFIG_DIR}\\{config_file}", "w") as out:
-            out.write(f"# {start_date} - {end_date}\n")
-        
-        profit, count = 0, 0
-        magic = base_magic + (n_iter * max_portfolio) + 1
+    start = arrow.get(start_date)
+    end = arrow.get(end_date)
 
-        while count < max_portfolio:
-            reset_env()
+    magic = base_magic + 1
 
-            symbol = random.choice(SYMBOLS)
+    for r in arrow.Arrow.range('month', start, end):
+        s = r.shift(months=month_span)
+        if s > end:
+            break
 
-            print(f"\noptimisation started for {symbol}, magic={magic}, "
-                  f"min target={profit}")
+        sd = r.strftime("%Y.%m.%d")
+        ed = s.strftime("%Y.%m.%d")
 
-            try:
-                cfg = CONFIG
-                cfg = cfg.replace("__SYMBOL__", symbol)
-                cfg = cfg.replace("__START_DATE__", start_date)
-                cfg = cfg.replace("__END_DATE__", end_date)
-                cfg = cfg.replace("__MAGIC__", str(magic))
-                cfg = cfg.replace("__REPORT__", report_file)
-                cfg = cfg.replace("__CONFIG_NAME__", config_file)
-                
-                with open(run_config, 'w') as out:
-                    out.write(cfg)
 
-                cmd_out = check_output(f"{BIN_PATH}\\terminal64.exe /config:{run_config}")
-                (res, res_profit) = read_xml(f"{TERMINAL_DIR}\\reports\\"
-                                             f"{report_file}.forward.xml", 
-                                             magic)
+        for n_iter in range(max_iter):
+            report_file = f"{exp_name}_{n_iter:02d}.xml"
+            config_file = f"{exp_name}_{n_iter:02d}.cfg"
 
-                if res and res_profit > profit:
-                    with open(f"{CONFIG_DIR}\\{config_file}", "a") as out:
-                        out.write(f"{res}\n")
-                    print(f"\nfound config: {res}\n\n")
-                    profit = res_profit
-                    count += 1
+            mode = "a"
 
-            except Exception as e:
-                print(e)
+            with open(f"{CONFIG_DIR}\\{config_file}", mode) as out:
+                out.write(f"\n# {sd} - {ed}\n")
 
-            except KeyboardInterrupt:
-                sys.exit(1)
+
+            for n_iter in range(max_iter):
+                symbol = random.choice(SYMBOLS)
+
+                print(f"\noptimisation started for {symbol}, magic={magic}, "
+                      f"start date={sd}, end date={ed}")
+
+                try:
+                    cfg = CONFIG
+                    cfg = cfg.replace("__SYMBOL__", symbol)
+                    cfg = cfg.replace("__START_DATE__", sd)
+                    cfg = cfg.replace("__END_DATE__", ed)
+                    cfg = cfg.replace("__MAGIC__", str(magic))
+                    cfg = cfg.replace("__REPORT__", report_file)
+                    cfg = cfg.replace("__CONFIG_NAME__", config_file)
+                    
+                    with open(run_config, 'w') as out:
+                        out.write(cfg)
+
+                    cmd_out = check_output(f"{BIN_PATH}\\terminal64.exe /config:{run_config}")
+                    res = read_xml(f"{TERMINAL_DIR}\\reports\\"
+                                   f"{report_file}.forward.xml", 
+                                   magic)
+
+                    if res:
+                        with open(f"{CONFIG_DIR}\\{config_file}", "a") as out:
+                            out.write(f"{res}\n")
+                        print(f"\nfound config: {res}\n\n")
+                        magic += 1
+
+                except Exception as e:
+                    print(e)
+
+                except KeyboardInterrupt:
+                    sys.exit(1)
 
 
 if __name__ == '__main__':
