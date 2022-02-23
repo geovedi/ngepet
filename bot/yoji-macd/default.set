@@ -1,0 +1,27 @@
+; saved on 2022.02.23 03:43:51
+; this file contains input parameters for testing/optimizing Yoji-MACD v1.0 expert advisor
+; to use it in the strategy tester, click Load in the context menu of the Inputs tab
+;
+; Generic Setting
+_risk_type=0
+_risk_value=100.0||50.0||50.0||500.0||Y
+_close_all_button=true
+_min_profit=0
+; Single Strategy Setting
+_symbol_name=
+_magic_number=100
+_session_start=0||0||1||10||N
+_session_length=8||8||1||80||N
+_tf=16385||0||0||49153||N
+_trend_period=200||200||1||2000||N
+_macd_fast=12||12||1||120||N
+_macd_slow=26||26||1||260||N
+_macd_sma=9||9||1||90||N
+_adx_period=15||15||1||150||N
+_adx_smoothing=15||15||1||150||N
+_atr_period=15||15||1||150||N
+_atr_factor=2||2||0.200000||20.000000||N
+_rr_ratio=3||3||0.300000||30.000000||N
+_inverse=false||false||0||true||N
+; Portfolio Strategy
+_config=portfolio.cfg
