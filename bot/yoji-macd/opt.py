@@ -262,10 +262,14 @@ def main(start_date="2021.04.01",
             out.write(f"# {sd} / {fd} / {ed}\n")
 
         n_cfg = 0
+        previous_symbol = None
 
         while n_cfg < max_span_config:
 
             symbol = random.choice(SYMBOLS)
+
+            if symbol == previous_symbol:
+                continue
 
             logging.info(
                 f"optimisation started for {symbol}, magic={magic}, "
@@ -297,6 +301,7 @@ def main(start_date="2021.04.01",
                     logging.info(f"found config: {res}")
                     magic += 1
                     n_cfg += 1
+                    previous_symbol = symbol
 
             except Exception as e:
                 logging.error(e)
