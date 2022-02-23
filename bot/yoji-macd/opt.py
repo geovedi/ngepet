@@ -151,8 +151,7 @@ ShutdownTerminal=1
 [TesterInputs]
 ; Generic Setting
 _risk_type=0
-_risk_value=250.0||10||1.0||100.0||N
-_max_risk=250.0
+_risk_value=50.0||10||1.0||100.0||N
 _close_all_button=true
 _min_profit=0
 ; Single Strategy Setting
@@ -160,7 +159,7 @@ _symbol_name=__SYMBOL__
 _magic_number=__MAGIC__
 _session_start=22||0||2||22||Y
 _session_length=12||8||4||20||Y
-_tf=30||15||0||16385||Y
+_tf=16385||5||0||16385||Y
 _trend_period=200||50||50||300||Y
 _macd_fast=12||2||2||18||Y
 _macd_slow=26||12||4||40||Y
@@ -168,7 +167,9 @@ _macd_sma=9||7||2||13||Y
 _adx_period=10||10||5||15||Y
 _adx_smoothing=10||10||10||50||Y
 _atr_period=15||7||2||15||N
-_atr_factor=2.0||3.00||0.25||5.0||Y
+_atr_factor=2.0||0.50||0.50||5.0||Y
+_rr_ratio=2.0||0.50||0.10||2.00||Y
+_inverse=false||false||0||true||Y
 ; Portfolio Strategy
 _config=__CONFIG_NAME__
 
@@ -179,38 +180,25 @@ def read_xml(fname, magic):
     df = xml2df(fname)
     print(f'Reading XML with {len(df)} entries...')
 
-    if '_exit_mom' in df.columns:
-        df['_exit_mom'] = df['_exit_mom'].apply(lambda x: True
-                                                if x == 'true' else False)
+    df = df[(df['Forward Result'] > 0.0)]
+    df = df[(df['Back Result'] > 0.0)]
 
-    df = df[(df['Forward Result'] > 0.0) & (df['Back Result'] > 0.0)]
+    df = df.drop_duplicates(subset=['Forward Result', 'Back Result', 'Profit'], keep=False)
 
-    df = df.drop_duplicates(subset=['Back Result', 'Profit'], keep='first')
-    df = df.drop_duplicates(subset=['Forward Result', 'Profit'], keep='first')
+    df['NP'] = np.floor(df['Profit'] / 500) * 500
+    df = df[df['NP'] > 0]
 
-    rescol = ['Forward Result', 'Back Result']
-    df['score'] = df[rescol].std(axis=1)
-    sm = df['score'].mean()
-    ss = df['score'].std()
-    df = df[(df['score'] > sm) & (df['score'] < sm + ss)]
+    cols = ['Back Result', 'Forward Result']
+    df['score'] = df[cols].std(axis=1)
+    df = df.dropna()
 
-    '''
-    brm = df['Back Result'].mean()
-    brs = df['Back Result'].std()
-    df = df[(df['Back Result'] > brm) & (df['Back Result'] < brm + brs)]
-
-    frm = df['Forward Result'].mean()
-    frs = df['Forward Result'].std()
-    df = df[(df['Forward Result'] > frm) & (df['Forward Result'] < frm + frs)]
-    '''
-
-    df = df.sort_values(['Back Result'], ascending=(False))
+    #df = df.sort_values(['NP', 'score'], ascending=(False, True,))
+    df = df.sort_values(['score', 'NP'], ascending=(True, False,))
 
     if not df.empty:
         print(df.head())
-
-    if df.empty:
-        return (None, 0.0)
+    else:
+        return None
 
     row = df.iloc[0].to_dict()
     row['_magic_number'] = magic
@@ -218,7 +206,11 @@ def read_xml(fname, magic):
         row['_trend_period'] = 200
     if '_atr_period' not in row:
         row['_atr_period'] = 15
-
+    if '_inverse' not in row:
+        row['_inverse'] = 0
+    else:
+        row['_inverse'] = 1 if row['_inverse'] == 'true' else 0
+    
     cfg = (f'{row["_symbol_name"]},'
            f'{row["_magic_number"]},'
            f'{row["_session_start"]},'
@@ -231,7 +223,9 @@ def read_xml(fname, magic):
            f'{row["_adx_period"]},'
            f'{row["_adx_smoothing"]},'
            f'{row["_atr_period"]},'
-           f'{row["_atr_factor"]:.2f}')
+           f'{row["_atr_factor"]:.2f},'
+           f'{row["_rr_ratio"]:.2f},'
+           f'{row["_inverse"]}')
     return cfg
 
 
@@ -239,7 +233,7 @@ def main(start_date="2021.04.01",
          end_date="2022.02.01",
          base_magic=100,
          max_span_config=1,
-         range_span=24,
+         range_span=6,
          run_config='run.ini',
          exp_name='exp'):
 
@@ -252,33 +246,36 @@ def main(start_date="2021.04.01",
     report_file = f"{exp_name}.xml"
     config_file = f"{exp_name}.cfg"
 
-    for r in arrow.Arrow.range('weeks', start, end):
-        e = r.shift(weeks=range_span)
-        f = e.shift(weeks=-8)
+    for s in arrow.Arrow.range('month', start, end):
+        e = s.shift(months=range_span)
+        f = e.shift(months=-int(np.max([1, np.floor(range_span / 3)])))
 
         if e > end:
             break
 
+        sd = s.strftime("%Y.%m.%d")
+        #sd = start_date
         fd = f.strftime("%Y.%m.%d")
         ed = e.strftime("%Y.%m.%d")
 
         with open(f"{CONFIG_DIR}\\{config_file}", "a") as out:
-            out.write(f"# {start_date} / {fd} / {ed}\n")
+            out.write(f"# {sd} / {fd} / {ed}\n")
 
         n_cfg = 0
+
         while n_cfg < max_span_config:
 
             symbol = random.choice(SYMBOLS)
 
             logging.info(
                 f"optimisation started for {symbol}, magic={magic}, "
-                f"start date={start_date}, forward date={fd}, end date={ed}"
+                f"start date={sd}, forward date={fd}, end date={ed}"
             )
 
             try:
                 cfg = CONFIG
                 cfg = cfg.replace("__SYMBOL__", symbol)
-                cfg = cfg.replace("__START_DATE__", start_date)
+                cfg = cfg.replace("__START_DATE__", sd)
                 cfg = cfg.replace("__END_DATE__", ed)
                 cfg = cfg.replace("__FORWARD_DATE__", fd)
                 cfg = cfg.replace("__MAGIC__", str(magic))
