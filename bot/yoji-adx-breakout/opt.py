@@ -11,20 +11,20 @@ from subprocess import check_output
 from bs4 import BeautifulSoup
 from fire import Fire
 
+import logging
 
+logging.basicConfig(
+    format='%(asctime)s [%(process)d] [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    level=logging.INFO)
 
 TERMINAL_ID = "D0E8209F77C8CF37AD8BF550E51FF075"
-TERMINAL_DIR = (
-    "C:\\Users\\Administrator\\AppData\\Roaming\\MetaQuotes\\Terminal\\"
-    f"{TERMINAL_ID}")
-TESTER_DIR = (
-    "C:\\Users\\Administrator\\AppData\\Roaming\\MetaQuotes\\Tester\\"
-    f"{TERMINAL_ID}")
-CONFIG_DIR = (
-    "C:\\Users\\Administrator\\AppData\\Roaming\\MetaQuotes\\Terminal\\Common\\Files"
-    )
-BIN_PATH = "C:\\Program Files\\MetaTrader 5"
 
+BIN_PATH = "C:\\Program Files\\MetaTrader 5"
+METATADER5_APPDATA_DIR = "C:\\Users\\Administrator\\AppData\\Roaming\\MetaQuotes"
+TERMINAL_DIR = f"{METATADER5_APPDATA_DIR}\\Terminal\\{TERMINAL_ID}"
+TESTER_DIR = f"{METATADER5_APPDATA_DIR}\\Tester\\{TERMINAL_ID}"
+CONFIG_DIR = f"{METATADER5_APPDATA_DIR}\\Terminal\\Common\\Files"
 
 FOREX_MAJOR = '''
 AUDUSD EURUSD GBPUSD NZDUSD USDCAD USDCHF USDJPY XAUUSD
@@ -69,9 +69,6 @@ ZECUSD
 
 SYMBOLS = DERIV_INDEX
 
-LEFTOVERS = set('''
-'''.strip().split())
-
 
 def kill_tester():
     try:
@@ -84,6 +81,7 @@ def kill_tester():
 def reset_env():
     try:
         shutil.rmtree(f"{TERMINAL_DIR}\\Tester\\cache")
+        shutil.rmtree(f"{TERMINAL_DIR}\\Tester\\reports")
     except:
         pass
 
@@ -91,6 +89,7 @@ def reset_env():
         shutil.rmtree(TESTER_DIR)
     except:
         pass
+
 
 def str2num(x):
     try:
@@ -160,43 +159,46 @@ _lookback=15||10||5||20||Y
 _adx_tf=15||5||0||16385||Y
 _adx_period=7||9||2||15||Y
 _adx_level=15||15||5||25||Y
-_atr_tf=15||5||0||16385||Y
+_atr_tf=15||15||0||16385||Y
 _atr_period=9||9||2||15||Y
-_atr_factor=2||1.0||1.0||5.0||Y
-_rr_ratio=6||1.0||1.0||6.0||Y
+_atr_factor=2||2.0||1.0||5.0||Y
+_rr_ratio=6||3.0||1.0||6.0||Y
 ; Portfolio Strategy
 _config=__CONFIG_NAME__
 
 '''
 
-
 def read_xml(fname, magic):
     df = xml2df(fname)
     print(f'Reading XML with {len(df)} entries...')
 
-    if '_exit_mom' in df.columns:
-        df['_exit_mom'] = df['_exit_mom'].apply(lambda x: True if x == 'true' else False)
+    df = df[(df['Forward Result'] > 0.0)]
+    df = df[(df['Back Result'] > 0.0)]
 
-    df = df[(df['Forward Result'] > 1.0) & (df['Back Result'] > 1.0)]
-    df['profit'] = np.floor(df['Profit'] / 2500) * 2500
-    df = df[df['profit'] > 0]
-    rescol = ['Forward Result', 'Back Result']
-    df['score'] = df[rescol].std(axis=1)
-    df = df[(df['score']) < (df['score'].mean())]
-    df = df.sort_values(['score'], ascending=(True))
-    df = df.iloc[:30]
-    df = df.sort_values(['profit', 'Back Result'], ascending=(False, False))
+    df = df.drop_duplicates(subset=['Forward Result', 'Back Result', 'Profit'], keep=False)
+
+    df['NP'] = np.floor(df['Profit'] / 500) * 500
+    df = df[df['NP'] > 0]
+
+    cols = ['Back Result', 'Forward Result']
+    df['score'] = df[cols].std(axis=1)
+    df = df.dropna()
+
+    #df = df.sort_values(['NP', 'score'], ascending=(False, True,))
+    df = df.sort_values(['score', 'NP'], ascending=(True, False,))
+
     if not df.empty:
         print(df.head())
-
-    if df.empty:
-        return (None, 0.0)
+    else:
+        return None
 
     row = df.iloc[0].to_dict()
-    rr_ratio = row.get('_rr_ratio', 3.0)
-
-    cfg = (f'{row["_symbol"]},'
-            f'{magic},'
+    row['_magic_number'] = magic
+    if '_rr_ratio' not in row:
+        row['_rr_ratio'] = 3.0
+    
+    cfg = (f'{row["_symbol_name"]},'
+           f'{row["_magic_number"]},'
             f'{row["_session_start"]},'
             f'{row["_session_length"]},'
             f'{row["_lookback"]},'
@@ -206,62 +208,81 @@ def read_xml(fname, magic):
             f'{row["_atr_tf"]},'
             f'{row["_atr_period"]},'
             f'{row["_atr_factor"]:.2f},'
-            f'{rr_ratio:.2f}'
-            )
-    return (cfg, row["profit"])
+            f'{row["_rr_ratio"]:.2f}')
+    return cfg
 
 
-def main(start_date="2021.04.01", end_date="2022.02.01", 
-         base_magic=100, max_cycle=3,
-         run_config='run.ini', exp_name='exp'):
+def main(start_date="2021.04.01",
+         end_date="2022.02.01",
+         base_magic=100,
+         max_span_config=1,
+         range_span=6,
+         run_config='run.ini',
+         exp_name='exp'):
 
+    reset_env()
 
+    start = arrow.get(start_date)
+    end = arrow.get(end_date)
+
+    magic = base_magic + 1
     report_file = f"{exp_name}.xml"
     config_file = f"{exp_name}.cfg"
 
-    with open(f"{CONFIG_DIR}\\{config_file}", "w") as out:
-        out.write(f"\n# {start_date} - {end_date}\n")
+    for s in arrow.Arrow.range('month', start, end):
+        e = s.shift(months=range_span)
+        f = e.shift(months=-int(np.max([1, np.floor(range_span / 3)])))
 
-    magic = base_magic + 1
-    profit = 0
+        if e > end:
+            break
 
-    for n_cycle in range(max_cycle):
-        random.shuffle(SYMBOLS)
+        sd = s.strftime("%Y.%m.%d")
+        #sd = start_date
+        fd = f.strftime("%Y.%m.%d")
+        ed = e.strftime("%Y.%m.%d")
 
-        for symbol in SYMBOLS:
-            reset_env()
+        with open(f"{CONFIG_DIR}\\{config_file}", "a") as out:
+            out.write(f"# {sd} / {fd} / {ed}\n")
 
-            print(f"\noptimisation started for {symbol}, magic={magic}, "
-                  f"min target={profit}")
+        n_cfg = 0
+
+        while n_cfg < max_span_config:
+
+            symbol = random.choice(SYMBOLS)
+
+            logging.info(
+                f"optimisation started for {symbol}, magic={magic}, "
+                f"start date={sd}, forward date={fd}, end date={ed}"
+            )
 
             try:
                 cfg = CONFIG
                 cfg = cfg.replace("__SYMBOL__", symbol)
-                cfg = cfg.replace("__START_DATE__", start_date)
-                cfg = cfg.replace("__END_DATE__", end_date)
+                cfg = cfg.replace("__START_DATE__", sd)
+                cfg = cfg.replace("__END_DATE__", ed)
+                cfg = cfg.replace("__FORWARD_DATE__", fd)
                 cfg = cfg.replace("__MAGIC__", str(magic))
                 cfg = cfg.replace("__REPORT__", report_file)
                 cfg = cfg.replace("__CONFIG_NAME__", config_file)
-                
+
                 with open(run_config, 'w') as out:
                     out.write(cfg)
 
                 cmd_out = check_output(
-                    f"{BIN_PATH}\\terminal64.exe /config:{run_config}"
-                )
-                (res, res_profit) = read_xml(f"{TERMINAL_DIR}\\reports\\"
-                                             f"{report_file}.forward.xml", 
-                                             magic)
+                    f"{BIN_PATH}\\terminal64.exe /config:{run_config}")
+                res = read_xml(
+                    f"{TERMINAL_DIR}\\reports\\"
+                    f"{report_file}.forward.xml", magic)
 
-                if res and res_profit > profit:
+                if res:
                     with open(f"{CONFIG_DIR}\\{config_file}", "a") as out:
                         out.write(f"{res}\n")
-                    print(f"\nfound config: {res}\n\n")
+                    logging.info(f"found config: {res}")
                     magic += 1
-                    profit = res_profit
+                    n_cfg += 1
 
             except Exception as e:
-                print(e)
+                logging.error(e)
 
             except KeyboardInterrupt:
                 sys.exit(1)
