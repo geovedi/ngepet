@@ -102,30 +102,32 @@ double RollingSQN(int period = 30, int gap = 15, bool overlap = false,
     ArrayCopy(returns, arr, 0, 0);
   }
 
-  PrintFormat("%d days period, %d days gap:", period, gap);
+  PrintFormat("%d days period, %d days %s:", period, gap,
+              (overlap) ? "overlap" : "gap");
   ArrayPrint(returns);
 
-  /*
-    double score = (MathSqrt(ArraySize(returns)) * MathMean(returns)) /
-                   MathStandardDeviation(returns);
-    if (!MathIsValidNumber(score))
-      return 0;
-  */
+  return MathMax(GetLinRegScore(returns), 0);
+}
 
-  // CRITERION_LR
-  double a, b, std_error;
-  double chart[];
+double GetLinRegScore(double &returns[]) {
+  double chart[], a, b, std_error, score = 0;
+
+  if (ArraySize(returns) <= 0)
+    return score;
 
   if (!CalculateLinearRegression(returns, chart, a, b))
-    return (0.0);
+    return score;
 
   if (!CalculateStdError(chart, a, b, std_error))
-    return (0.0);
+    return score;
 
-  double score = (std_error == 0.0) ? a * ArraySize(returns)
-                                    : a * ArraySize(returns) / std_error;
+  score = (std_error == 0.0) ? a * ArraySize(returns)
+                             : a * ArraySize(returns) / std_error;
 
-  return MathMax(score, 0);
+  if (!MathIsValidNumber(score))
+    return 0;
+
+  return score;
 }
 
 double FilteredScore(int min_trades = 30) {
