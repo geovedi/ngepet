@@ -21,10 +21,10 @@ logging.basicConfig(
 TERMINAL_ID = "D0E8209F77C8CF37AD8BF550E51FF075"
 
 BIN_PATH = "C:\\Program Files\\MetaTrader 5"
-INSTALL_DIR = "C:\\Users\\Administrator\\AppData\\Roaming\\MetaQuotes"
-TERMINAL_DIR = f"{INSTALL_DIR}\\Terminal\\{TERMINAL_ID}"
-TESTER_DIR = f"{INSTALL_DIR}\\Tester\\{TERMINAL_ID}"
-CONFIG_DIR = f"{INSTALL_DIR}\\Terminal\\Common\\Files"
+METATADER5_APPDATA_DIR = "C:\\Users\\Administrator\\AppData\\Roaming\\MetaQuotes"
+TERMINAL_DIR = f"{METATADER5_APPDATA_DIR}\\Terminal\\{TERMINAL_ID}"
+TESTER_DIR = f"{METATADER5_APPDATA_DIR}\\Tester\\{TERMINAL_ID}"
+CONFIG_DIR = f"{METATADER5_APPDATA_DIR}\\Terminal\\Common\\Files"
 
 FOREX_MAJOR = '''
 AUDUSD EURUSD GBPUSD NZDUSD USDCAD USDCHF USDJPY XAUUSD
