@@ -40,6 +40,31 @@ void GetLastNDeals(double &trades[], ulong magic = 0, int limit = 20) {
   }
 }
 
+void GetLastDeals(double &trades[], datetime start, datetime end, string symbol,
+                  ulong magic_number) {
+  HistorySelect(start, end);
+
+  for (int i = HistoryDealsTotal() - 1; i >= 0; i--) {
+    deal_info.Ticket(HistoryDealGetTicket(i));
+
+    if (magic_number > 0 && deal_info.Magic() != magic_number)
+      continue;
+
+    if (symbol != deal_info.Symbol())
+      continue;
+
+    if (deal_info.Entry() == DEAL_ENTRY_OUT) {
+      double profit = deal_info.Profit() //
+                      + deal_info.Swap() //
+                      + (2 * deal_info.Commission());
+
+      int size = ArraySize(trades);
+      ArrayResize(trades, size + 1);
+      trades[size] = profit;
+    }
+  }
+}
+
 double GetLastPositionPrice(string symbol, ulong magic_number,
                             ENUM_POSITION_TYPE pos) {
   double price = 0;
@@ -58,6 +83,24 @@ double GetLastPositionPrice(string symbol, ulong magic_number,
   return (price);
 }
 
+void ExpirePositions(string symbol, ulong magic_number, int days) {
+  if (days <= 0)
+    return;
+
+  int limit = days * PeriodSeconds(PERIOD_D1);
+
+  for (int i = PositionsTotal() - 1; i >= 0; i--) {
+    if (position_info.SelectByIndex(i)) {
+      if ((position_info.Magic() == magic_number) &&
+          (position_info.Symbol() == symbol)) {
+        datetime pos_open = position_info.Time();
+        if (TimeCurrent() - pos_open >= limit)
+          trade.PositionClose(position_info.Ticket());
+      }
+    }
+  }
+}
+
 int CountPositionsByType(string symbol, ulong magic_number,
                          ENUM_POSITION_TYPE pos) {
   int count = 0;
@@ -66,7 +109,7 @@ int CountPositionsByType(string symbol, ulong magic_number,
     if (position_info.SelectByIndex(i)) {
       if ((position_info.Magic() == magic_number) &&
           (position_info.Symbol() == symbol) &&
-          position_info.PositionType() == pos) {
+          (position_info.PositionType() == pos)) {
         count++;
       }
     }
@@ -80,7 +123,8 @@ void CloseOrdersByType(string symbol, ulong magic_number,
   for (int i = OrdersTotal() - 1; i >= 0; i--) {
     if (order_info.SelectByIndex(i)) {
       if ((order_info.Magic() == magic_number) &&
-          (order_info.Symbol() == symbol) && order_info.OrderType() == order) {
+          (order_info.Symbol() == symbol) &&
+          (order_info.OrderType() == order)) {
         trade.OrderDelete(order_info.Ticket());
       }
     }
