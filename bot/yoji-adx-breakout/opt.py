@@ -132,7 +132,8 @@ Optimization=2
 Model=1
 FromDate=__START_DATE__
 ToDate=__END_DATE__
-ForwardMode=1
+ForwardMode=4
+ForwardDate=__FORWARD_DATE__
 Deposit=10000
 Currency=USD
 ProfitInPips=0
@@ -148,8 +149,15 @@ ShutdownTerminal=1
 [TesterInputs]
 ; Generic Setting
 _risk_type=0||0||0||2||N
-_risk_value=100.0||10.0||1.0||100.0||N
-_expire=1
+_risk_value=100||10.0||1.0||100.0||N
+_expire=1||1||1||10||N
+_close_all_button=true
+; Equity Trailing
+_eq_step=0||0.0||0.0||0.0||N
+_eq_start=0||0.0||0.0||0.0||N
+; Risk Management
+_max_pos=0||0||5||50||N
+_risk_adj_factor=0||-0.5||0.05||0.5||N
 ; Single Strategy Setting
 _symbol_name=__SYMBOL__
 _magic_number=__MAGIC__
@@ -182,10 +190,11 @@ def read_xml(fname, magic):
 
     cols = ['Back Result', 'Forward Result']
     df['score'] = df[cols].std(axis=1)
+    df = df[df['score'] < df['score'].mean()]
     df = df.dropna()
 
-    #df = df.sort_values(['NP', 'score'], ascending=(False, True,))
-    df = df.sort_values(['score', 'NP'], ascending=(True, False,))
+    df = df.sort_values(['NP', 'score'], ascending=(False, True,))
+    #df = df.sort_values(['score', 'NP'], ascending=(True, False,))
 
     if not df.empty:
         print(df.head())
@@ -231,7 +240,7 @@ def main(start_date="2021.04.01",
 
     for s in arrow.Arrow.range('month', start, end):
         e = s.shift(months=range_span)
-        f = e.shift(months=-int(np.max([1, np.floor(range_span / 3)])))
+        f = s.shift(months=int(np.max([1, np.floor(range_span / 5)])))
 
         if e > end:
             break
