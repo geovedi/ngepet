@@ -12,6 +12,9 @@
 #include "TradeTools.mqh"
 
 void ExportTradeHistory(string fname, int min_level = 0) {
+  if (fname == "")
+    return;
+
   int handle = FileOpen(
       fname, FILE_WRITE | FILE_SHARE_READ | FILE_COMMON | FILE_CSV | FILE_ANSI,
       ";");
@@ -20,8 +23,12 @@ void ExportTradeHistory(string fname, int min_level = 0) {
     return;
   }
 
-  FileWrite(handle, "Ticket", "OpenTime", "OpenPrice", "CloseTime",
-            "ClosePrice", "Symbol", "Action", "Size", "CommSwap", "PL",
+  FileWrite(handle, "Ticket",             //
+            "Symbol", "Action", "Volume", //
+            "OpenTime", "OpenPrice",      //
+            "CloseTime", "ClosePrice",    //
+            "SL", "TP",                   //
+            "CommSwap", "ProfitLoss",     //
             "Comment");
 
   CHistoryPositionInfo hist_position;
@@ -46,8 +53,6 @@ void ExportTradeHistory(string fname, int min_level = 0) {
       long pos_id = hist_position.Identifier();
       double volume = hist_position.Volume();
       double price_open = hist_position.PriceOpen();
-      double price_sl = hist_position.StopLoss();
-      double price_tp = hist_position.TakeProfit();
       double price_close = hist_position.PriceClose();
       double commission = hist_position.Commission();
       double swap = hist_position.Swap();
@@ -60,6 +65,21 @@ void ExportTradeHistory(string fname, int min_level = 0) {
       string deal_tickets = hist_position.DealTickets(",");
       int deals_count = HistoryDealsTotal();
 
+      ushort sep = StringGetCharacter(" ", 0);
+      string sltp[];
+
+      double price_sl = hist_position.StopLoss();
+      if (price_sl == 0 && close_reason_desc == "sl") {
+        StringSplit(close_comment, sep, sltp);
+        price_sl = StringToDouble(sltp[1]);
+      }
+
+      double price_tp = hist_position.TakeProfit();
+      if (price_tp == 0 && close_reason_desc == "tp") {
+        StringSplit(close_comment, sep, sltp);
+        price_tp = StringToDouble(sltp[1]);
+      }
+
       if ((int)open_comment < min_level)
         continue;
 
@@ -68,19 +88,23 @@ void ExportTradeHistory(string fname, int min_level = 0) {
       double point = symbol_info.Point();
       int volume_digits = GetDigits(symbol_info.LotsMin());
 
-      FileWrite(handle,                             //
-                pos_id,                             //
-                (string)time_open,                  //
-                DoubleToString(price_open, digits), //
-                (string)time_close,                 //
-                DoubleToString(price_close,
-                               (deals_count == 2 ? digits : digits + 3)), //
-                symbol,                                                   //
-                type_desc,                                                //
-                DoubleToString(volume, volume_digits),                    //
-                DoubleToString((2 * commission) + swap, 2),               //
-                DoubleToString(profit, 2),                                //
-                open_comment);
+      FileWrite(handle,                                //
+                pos_id,                                // Ticket
+                symbol,                                // Symbol
+                type_desc,                             // Action
+                DoubleToString(volume, volume_digits), // Volume
+                (string)time_open,                     // OpenTime
+                DoubleToString(price_open, digits),    // OpenPrice
+                (string)time_close,                    // CloseTime
+                DoubleToString(
+                    price_close,
+                    (deals_count == 2 ? digits : digits + 3)), // ClosePrice
+                DoubleToString(price_sl, digits),              // SL
+                DoubleToString(price_tp, digits),              // TP
+                DoubleToString((2 * commission) + swap, 2),    // CommSwap
+                DoubleToString(profit, 2),                     // ProfitLoss
+                open_comment                                   // Comment
+      );
     }
   }
 
