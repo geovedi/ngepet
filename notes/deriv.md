@@ -12,11 +12,15 @@
 
 Last update: 14 March 2022
 
+---
+
 ## Hacks
+
+### VIX75 wrong volume size calculation
 
 There is an issue with VIX75 symbol where `sqMMFixedAmount()` in the exported MQL5 code gives wrong volume size. Current workaround is by multiplying `oneLotSLDrawdown` value by 100. 
 
-Template: `...\StrategyQuantX\internal\extend\Code\MetaTrader5\MoneyManagement\FixedAmount_class.tpl`
+Affected template (SQX Build 135.868): `...\StrategyQuantX\internal\extend\Code\MetaTrader5\MoneyManagement\FixedAmount_class.tpl`
 
 ```mql5
    double oneLotSLDrawdown = PointValue * MathAbs(openPrice - sl) * ((correctedSymbol == "Volatility 75 Index") ? 100 : 1);
