@@ -14,7 +14,7 @@ Last update: 14 March 2022
 
 ---
 
-## Hacks
+## SQX Hacks
 
 ### VIX75 wrong volume size calculation
 
