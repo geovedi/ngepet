@@ -28,21 +28,21 @@ enum ENUM_CLOSINGS {
 
 input ENUM_TRAILING_TYPES trailing_type = TRAIL_FIXED; // Trailing Type
 input group "Position Trailing";
-input double pos_step = 0.0;  // Step
+input double pos_delta = 0.0;  // Delta
 input double pos_start = 0.0; // Start
 input group "Equity Trailing";
-input double eq_step = 0.0;  // Step
+input double eq_delta = 0.0;  // Delta
 input double eq_start = 0.0; // Start
 input group "Trade Closing";
 input ENUM_CLOSINGS closing_mode = CLOSING_NONE; // Closing Mode
 input string closing_time = "23:59";             // Closing Time
 sinput bool emergency_button = true;             // Display Emergency Button
+sinput int tm = 1; // Event Time
 
 CSortedMap<long, double> pos_records;
-double eq_max_profit;
+double max_profit;
 
 int OnInit() {
-  int tm = 15;
   if (!EventSetTimer(tm)) {
     PrintFormat("[ERROR] %s: Unable to activate timer. Error: %s", __FUNCTION__,
                 GetLastError());
@@ -54,7 +54,7 @@ int OnInit() {
   if (emergency_button)
     DisplayEmergencyCloseButtons();
 
-  eq_max_profit = 0;
+  max_profit = 0;
   return (0);
 }
 
@@ -107,7 +107,7 @@ void CloseAllPositionsAndOrders() {
 }
 
 void EquityTrailing() {
-  if (eq_step <= 0)
+  if (eq_delta <= 0)
     return;
 
   double trail_start = (trailing_type == TRAIL_PERCENT_BALANCE)
@@ -115,24 +115,26 @@ void EquityTrailing() {
                            : eq_start;
 
   double trail_risk = (trailing_type == TRAIL_PERCENT_BALANCE)
-                          ? (eq_step / 100.0) * account.Balance()
-                          : eq_step;
+                          ? (eq_delta / 100.0) * account.Balance()
+                          : eq_delta;
 
   double profit = account.Equity() - account.Balance();
 
-  if (eq_max_profit < profit) {
-    eq_max_profit = profit;
+  if (max_profit < profit) {
+    max_profit = profit;
     PrintFormat("[DEBUG] %s: New max equity profit: %.2f", __FUNCTION__,
-                eq_max_profit);
-  } else if (eq_max_profit > trail_start &&
-             eq_max_profit - profit >= trail_risk) {
+                max_profit);
+  } else if (max_profit > trail_start &&
+             max_profit - profit >= trail_risk) {
     CloseAllPositionsAndOrders();
-    eq_max_profit = 0.0;
+    max_profit = 0.0;
   }
+  Comment(StringFormat("\nLast max profit: %.2f\nProfit delta: %.2f", //
+                       max_profit, profit - max_profit));
 }
 
 void PositionTrailing() {
-  if (pos_step <= 0)
+  if (pos_delta <= 0)
     return;
 
   double trail_start = (trailing_type == TRAIL_PERCENT_BALANCE)
@@ -140,8 +142,8 @@ void PositionTrailing() {
                            : pos_start;
 
   double trail_risk = (trailing_type == TRAIL_PERCENT_BALANCE)
-                          ? (pos_step / 100.0) * account.Balance()
-                          : pos_step;
+                          ? (pos_delta / 100.0) * account.Balance()
+                          : pos_delta;
 
   for (int i = PositionsTotal() - 1; i >= 0; i--) {
     if (position_info.SelectByIndex(i)) {
@@ -158,7 +160,7 @@ void PositionTrailing() {
           PrintFormat("[DEBUG] %s: Update max profit: %.2f for ticket #%d",
                       __FUNCTION__, pos_max_profit, ticket);
         } else if (pos_max_profit > pos_start &&
-                   pos_max_profit - profit >= pos_step) {
+                   pos_max_profit - profit >= pos_delta) {
           trade.PositionClose(position_info.Ticket());
           PrintFormat(
               "[DEBUG] %s: Closing ticket #%d with profit: %.2f (max: %.2f)",
