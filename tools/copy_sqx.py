@@ -1,7 +1,6 @@
 import os
 import shutil
 import hashlib
-import base64
 import fire
 import pandas as pd
 
