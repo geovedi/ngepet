@@ -4,7 +4,7 @@ CAccountInfo m_account;
 CDealInfo m_deal;
 
 double sqGeovediMartingale(string symbol, ENUM_ORDER_TYPE orderType, double price, double sl, 
-                           double riskedMoney, int riskMultiplier,
+                           double riskedMoney, double riskMultiplier,
                            double minLots, double maxLots, 
                            int maxMMSeq, int decimals,
                            int magicNo) {
@@ -53,7 +53,7 @@ double sqGeovediMartingale(string symbol, ENUM_ORDER_TYPE orderType, double pric
     }
   }
 
-  lossCount - (lossCount > maxMMSeq) ? 0 : lossCount;
+  lossCount = (lossCount > maxMMSeq) ? 0 : lossCount;
   double coef = MathPow(riskMultiplier, lossCount);
   double risk = MathMax(riskedMoney * coef, riskedMoney);
   double lotSize = roundDown(risk / slInMoney, decimals);
@@ -61,7 +61,7 @@ double sqGeovediMartingale(string symbol, ENUM_ORDER_TYPE orderType, double pric
 
   Verbose("Computing Money Management ",
           "- Loss Count: ", IntegerToString(lossCount),
-          ", Coefficient: ", IntegerToString(coef),
+          ", Coefficient: ", DoubleToString(coef, 2),
           ", Computed LotSize: ", DoubleToString(lotSize, decimals));
   Verbose("Money to risk: ", DoubleToString(riskedMoney, 2),
           ", Max 1 lot trade drawdown: ", DoubleToString(slInMoney, 2),
