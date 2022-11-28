@@ -1,6 +1,3 @@
-#include <Trade\AccountInfo.mqh>
-
-CAccountInfo m_account;
 CDealInfo m_deal;
 
 double sqGeovediMartingale(string symbol, ENUM_ORDER_TYPE orderType, double price, double sl, 
@@ -31,7 +28,7 @@ double sqGeovediMartingale(string symbol, ENUM_ORDER_TYPE orderType, double pric
   double symbolMaxLot = SymbolInfoDouble(correctedSymbol, SYMBOL_VOLUME_MAX);
   double symbolLotStep = SymbolInfoDouble(correctedSymbol, SYMBOL_VOLUME_STEP);
 
-  double slInMoney = MathAbs(m_account.OrderProfitCheck(correctedSymbol, orderType, 1.0, openPrice, sl));
+  double slInMoney = pointValue * MathAbs(openPrice - sl);
 
   if (!HistorySelect(0, TimeTradeServer())) {
     return (minLots);
@@ -57,7 +54,7 @@ double sqGeovediMartingale(string symbol, ENUM_ORDER_TYPE orderType, double pric
   double coef = MathPow(riskMultiplier, lossCount);
   double risk = MathMax(riskedMoney * coef, riskedMoney);
   double lotSize = roundDown(risk / slInMoney, decimals);
-  lotSize = MathMax(minLots, MathMax(maxLots, lotSize));
+  lotSize = MathMax(minLots, MathMin(maxLots, lotSize));
 
   Verbose("Computing Money Management ",
           "- Loss Count: ", IntegerToString(lossCount),
