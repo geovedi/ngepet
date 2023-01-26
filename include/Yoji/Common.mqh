@@ -1,3 +1,18 @@
+#include <Trade\AccountInfo.mqh>
+#include <Trade\DealInfo.mqh>
+#include <Trade\HistoryOrderInfo.mqh>
+#include <Trade\PositionInfo.mqh>
+#include <Trade\SymbolInfo.mqh>
+#include <Trade\Trade.mqh>
+
+CAccountInfo accountInfo;
+CDealInfo dealInfo;
+COrderInfo orderInfo;
+CPositionInfo positionInfo;
+CSymbolInfo symbolInfo;
+CTrade trade;
+
+
 bool HasPosition(string symbol, ulong magic) {
   for (int i = PositionsTotal() - 1; i >= 0; i--) {
     if (positionInfo.SelectByIndex(i)) {
@@ -47,13 +62,11 @@ void PrepareOrder(string symbol, ulong magic, ENUM_ORDER_TYPE order,
         size = MathCeil(volume / split / stepVolume) * stepVolume;
         volume -= size;
       }
-      SendOrder(symbol, order, size, price, sl, tp, comment, magic);
+      SendOrder(symbol, magic, order, size, price, sl, tp, comment);
     }
   } else {
-    SendOrder(symbol, order, volume, price, sl, tp, comment, magic);
+    SendOrder(symbol, magic, order, volume, price, sl, tp, comment);
   }
-
-  SendOrder(symbol, magic, order, volume, price, sl, tp, comment);
 }
 
 bool SendOrder(string symbol, ulong magic, ENUM_ORDER_TYPE order, double volume,
