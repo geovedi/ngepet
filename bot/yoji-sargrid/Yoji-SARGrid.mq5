@@ -65,6 +65,20 @@ void OnTimer() {
   entryBar = Bars(symbol, entryTimeframe);
 }
 
+double OnTester() {
+  double nt = TesterStatistics(STAT_TRADES);
+  double np = TesterStatistics(STAT_PROFIT);
+  double id = TesterStatistics(STAT_INITIAL_DEPOSIT);
+  double dd = TesterStatistics(STAT_EQUITY_DD_RELATIVE);
+
+  double score = np / dd;
+
+  if (nt < 300 || np < id * 2 || !MathIsValidNumber(score))
+    return (DBL_MIN);
+
+  return (score);
+}
+
 ///
 
 bool ManageOpenPositions(string symbol, ulong magic) {
