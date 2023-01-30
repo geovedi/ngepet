@@ -12,7 +12,6 @@ CPositionInfo positionInfo;
 CSymbolInfo symbolInfo;
 CTrade trade;
 
-
 bool HasPosition(string symbol, ulong magic) {
   for (int i = PositionsTotal() - 1; i >= 0; i--) {
     if (positionInfo.SelectByIndex(i)) {
@@ -219,4 +218,105 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam,
     ObjectSetInteger(0, "EmergencyStop", OBJPROP_STATE, false);
     ExpertRemove();
   }
+}
+
+double CalculateLinearRegressionRatio() {
+  double ret = 0.0;
+
+  double array[];
+  double trades_volume;
+  GetTradeResultsToArray(array, trades_volume);
+  int trades = ArraySize(array);
+
+  if (trades < 10)
+    return (0);
+
+  double average_pl = 0;
+  for (int i = 0; i < ArraySize(array); i++)
+    average_pl += array[i];
+  average_pl /= trades;
+
+  if (MQLInfoInteger(MQL_TESTER) && !MQLInfoInteger(MQL_OPTIMIZATION))
+    PrintFormat("%s: Trades=%d, Average profit=%.2f", __FUNCTION__, trades,
+                average_pl);
+
+  double a, b, std_error;
+  double chart[];
+  if (!CalculateLinearRegression(array, chart, a, b))
+    return (0);
+
+  if (!CalculateStdError(chart, a, b, std_error))
+    return (0);
+
+  ret = (std_error == 0.0) ? a * trades : a * trades / std_error;
+
+  return (ret);
+}
+
+bool GetTradeResultsToArray(double &pl_results[], double &volume) {
+  if (!HistorySelect(0, TimeCurrent()))
+    return (false);
+  uint total_deals = HistoryDealsTotal();
+  volume = 0;
+
+  ArrayResize(pl_results, total_deals);
+
+  int counter = 0;
+  ulong ticket_history_deal = 0;
+
+  for (uint i = 0; i < total_deals; i++) {
+    if ((ticket_history_deal = HistoryDealGetTicket(i)) > 0) {
+      ENUM_DEAL_ENTRY deal_entry = (ENUM_DEAL_ENTRY)HistoryDealGetInteger(
+          ticket_history_deal, DEAL_ENTRY);
+      long deal_type = HistoryDealGetInteger(ticket_history_deal, DEAL_TYPE);
+      double deal_profit =
+          HistoryDealGetDouble(ticket_history_deal, DEAL_PROFIT);
+      double deal_volume =
+          HistoryDealGetDouble(ticket_history_deal, DEAL_VOLUME);
+      if ((deal_type != DEAL_TYPE_BUY) && (deal_type != DEAL_TYPE_SELL))
+        continue;
+      if (deal_entry != DEAL_ENTRY_IN) {
+        pl_results[counter] = deal_profit;
+        volume += deal_volume;
+        counter++;
+      }
+    }
+  }
+  ArrayResize(pl_results, counter);
+  return (true);
+}
+
+bool CalculateLinearRegression(double &change[], double &chartline[],
+                               double &a_coef, double &b_coef) {
+  if (ArraySize(change) < 3)
+    return (false);
+
+  int N = ArraySize(change);
+  ArrayResize(chartline, N);
+  chartline[0] = change[0];
+  for (int i = 1; i < N; i++)
+    chartline[i] = chartline[i - 1] + change[i];
+  double x = 0, y = 0, x2 = 0, xy = 0;
+  for (int i = 0; i < N; i++) {
+    x = x + i;
+    y = y + chartline[i];
+    xy = xy + i * chartline[i];
+    x2 = x2 + i * i;
+  }
+  a_coef = (N * xy - x * y) / (N * x2 - x * x);
+  b_coef = (y - a_coef * x) / N;
+
+  return (true);
+}
+
+bool CalculateStdError(double &data[], double a_coef, double b_coef,
+                       double &std_err) {
+  double error = 0;
+  int N = ArraySize(data);
+  if (N <= 2)
+    return (false);
+  for (int i = 0; i < N; i++)
+    error += MathPow(a_coef * i + b_coef - data[i], 2);
+  std_err = MathSqrt(error / (N - 2));
+  return (true);
 }
