@@ -25,7 +25,7 @@ class MaxDrawdownProfitSlope50Loss(IHyperOptLoss):
         trendline = np.linspace(profit_cumsum.iloc[0], profit_total, trade_count)
         
         # Calculate the slope of the profit growth; the first element of the output is the slope
-        slope = np.polyfit(range(trade_count), profit_cumsum, 1)[0]
+        slope = np.polyfit(trendline, profit_cumsum, 1)[0]
 
         # Calculate maximum drawdown, with a fallback value in case of no losing trades
         try:
