@@ -14,7 +14,7 @@ class MaxDrawdownProfitSlope50Loss(IHyperOptLoss):
     @staticmethod
     def hyperopt_loss_function(results: DataFrame, trade_count: int, config: dict, *args, **kwargs) -> float:
         # Check if basic conditions are not met and return a high loss score
-        if trade_count < 50 or not results['profit_abs'].sum() > 0:
+        if trade_count < 50 or results['profit_abs'].sum() < 0:
             return 9999.0
 
         # Calculate the total profit and cumulative profit over trades
