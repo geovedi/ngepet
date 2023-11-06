@@ -38,7 +38,7 @@ class BBandRSI(IStrategy):
     entry_rsi_level = IntParameter(10, 50, default=30, space="buy", optimize=True)
     entry_shift = IntParameter(0, 20, default=0, space="buy", optimize=True)
 
-    exit_rsi_period = IntParameter(10, 50, default=15, space="buy", optimize=True)
+    exit_rsi_period = IntParameter(10, 50, default=15, space="sell", optimize=True)
     exit_rsi_level = IntParameter(50, 90, default=70, space="sell", optimize=True)
     exit_shift = IntParameter(0, 20, default=0, space="sell", optimize=True)
 
