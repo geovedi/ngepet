@@ -80,7 +80,7 @@ class BBandRSI(IStrategy):
             DataFrame: The DataFrame with the entry signal column updated.
         """
         conditions = [
-            (dataframe["entry_rsi"].shift(self.entry_shift.value) > self.entry_rsi_level.value),
+            (dataframe["entry_rsi"].shift(self.entry_shift.value) < self.entry_rsi_level.value),
             (qtpylib.crossed_above(dataframe["close"].shift(self.entry_shift.value), 
                                    dataframe["entry_bb_lu"]).shift(self.entry_shift.value)),
             (dataframe["volume"] > 0),
