@@ -2,6 +2,7 @@ import numpy as np
 import talib.abstract as ta
 import freqtrade.vendor.qtpylib.indicators as qtpylib
 
+from freqtrade.optimize.space import SKDecimal
 from freqtrade.strategy import (
     DecimalParameter,
     IStrategy,
@@ -17,6 +18,13 @@ class BBandRSI(IStrategy):
     statistical measures and momentum indicators.
     """
 
+    use_custom_stoploss = True
+
+    class HyperOpt:
+        # Define a custom stoploss space.
+        def stoploss_space():
+            return [SKDecimal(-0.1, -0.01, decimals=2, name="stoploss")]
+
     INTERFACE_VERSION: int = 3
 
     stoploss = -0.03
@@ -25,7 +33,7 @@ class BBandRSI(IStrategy):
     timeframe = "1h"
 
     entry_bb_period = IntParameter(10, 50, default=15, space="buy", optimize=True)
-    entry_bb_std = DecimalParameter(1.0, 5.0, default=2.0, space="buy", optimize=True)
+    entry_bb_std = DecimalParameter(1.0, 5.0, default=2.0, decimals=1, space="buy", optimize=True)
     entry_rsi_period = IntParameter(10, 50, default=15, space="buy", optimize=True)
     entry_rsi_level = IntParameter(10, 50, default=30, space="buy", optimize=True)
     entry_shift = IntParameter(0, 20, default=0, space="buy", optimize=True)
