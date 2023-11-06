@@ -1,6 +1,7 @@
 import talib.abstract as ta
 import numpy as np
 
+from freqtrade.optimize.space import SKDecimal
 from freqtrade.strategy import (
     BooleanParameter,
     DecimalParameter,
@@ -21,6 +22,13 @@ class ADXMomentum(IStrategy):
     is moving. The strategy is configured with a range of parameters to optimize for various
     timeframes and market conditions during hyperoptimization.
     """
+
+    use_custom_stoploss = True
+
+    class HyperOpt:
+        # Define a custom stoploss space.
+        def stoploss_space():
+            return [SKDecimal(-0.1, -0.01, decimals=2, name="stoploss")]
 
     INTERFACE_VERSION: int = 3
 
