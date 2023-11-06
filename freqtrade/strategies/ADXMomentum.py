@@ -3,7 +3,6 @@ import numpy as np
 
 from freqtrade.strategy import (
     BooleanParameter,
-    CategoricalParameter,
     DecimalParameter,
     IStrategy,
     IntParameter,
@@ -28,22 +27,21 @@ class ADXMomentum(IStrategy):
     stoploss = -0.03
     minimal_roi = {"0": 0.1}
 
-    tf = CategoricalParameter(["5m", "15m", "30m", "1h", "4h"], default="1h", space="buy", optimize=True)
-    timeframe = tf.value
+    timeframe = "1h"
 
-    entry_adx_period = CategoricalParameter(range(10, 50, 5), default=15, space="buy", optimize=True)
-    entry_mom_period = CategoricalParameter(range(10, 50, 5), default=15, space="buy", optimize=True)
-    entry_adx_level = CategoricalParameter(range(20, 50, 5), default=25, space="buy", optimize=True)
-    entry_plus_di_level = CategoricalParameter(range(20, 50, 5), default=25, space="buy", optimize=True)
-    entry_shift = CategoricalParameter(range(0, 20, 2), default=0, space="buy", optimize=True)
-    entry_di_needed = CategoricalParameter([True, False], default=True, space="buy", optimize=True)
+    entry_adx_period = IntParameter(10, 50, default=15, space="buy", optimize=True)
+    entry_mom_period = IntParameter(10, 50, default=15, space="buy", optimize=True)
+    entry_adx_level = IntParameter(10, 50, default=25, space="buy", optimize=True)
+    entry_plus_di_level = IntParameter(10, 50, default=25, space="buy", optimize=True)
+    entry_shift = IntParameter(0, 20, default=0, space="buy", optimize=True)
+    entry_di_needed = BooleanParameter(default=True, space="buy", optimize=True)
 
-    exit_adx_period = CategoricalParameter(range(10, 50, 5), default=15, space="sell", optimize=True)
-    exit_mom_period = CategoricalParameter(range(10, 50, 5), default=15, space="sell", optimize=True)
-    exit_adx_level = CategoricalParameter(range(20, 50, 5), default=25, space="sell", optimize=True)
-    exit_minus_di_level = CategoricalParameter(range(20, 50, 5), default=25, space="sell", optimize=True)
-    exit_shift = CategoricalParameter(range(0, 20, 2), default=0, space="sell", optimize=True)
-    exit_di_needed = CategoricalParameter([True, False], default=True, space="sell", optimize=True)
+    exit_adx_period = IntParameter(10, 50, default=15, space="sell", optimize=True)
+    exit_mom_period = IntParameter(10, 50, default=15, space="sell", optimize=True)
+    exit_adx_level = IntParameter(10, 50, default=25, space="sell", optimize=True)
+    exit_minus_di_level = IntParameter(10, 50, default=25, space="sell", optimize=True)
+    exit_shift = IntParameter(0, 20, default=0, space="sell", optimize=True)
+    exit_di_needed = BooleanParameter(default=True, space="sell", optimize=True)
 
     # Define the startup candle count using max value from buy/sell period parameters
     startup_candle_count: int = 50
