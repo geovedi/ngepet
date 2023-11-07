@@ -4,10 +4,8 @@ import freqtrade.vendor.qtpylib.indicators as qtpylib
 
 from freqtrade.optimize.space import SKDecimal
 from freqtrade.strategy import (
-    #DecimalParameter,
-    IStrategy,
-    #IntParameter,
-    CategoricalParameter
+    CategoricalParameter,
+    IStrategy
 )
 from pandas import DataFrame
 from functools import reduce
