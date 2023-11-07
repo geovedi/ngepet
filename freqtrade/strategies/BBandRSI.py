@@ -34,8 +34,6 @@ class BBandRSI(IStrategy):
 
     entry_bb_period = IntParameter(10, 50, default=15, space="buy", optimize=True)
     entry_bb_std = DecimalParameter(1.0, 5.0, default=2.0, decimals=1, space="buy", optimize=True)
-    entry_rsi_period = IntParameter(10, 50, default=15, space="buy", optimize=True)
-    entry_rsi_level = IntParameter(10, 50, default=30, space="buy", optimize=True)
     entry_shift = IntParameter(0, 20, default=0, space="buy", optimize=True)
 
     exit_rsi_period = IntParameter(10, 50, default=15, space="sell", optimize=True)
@@ -55,7 +53,6 @@ class BBandRSI(IStrategy):
         Returns:
             DataFrame: The DataFrame with the new indicators added.
         """
-        dataframe["entry_rsi"] = ta.RSI(dataframe, timeperiod=int(self.entry_rsi_period.value))
         dataframe["exit_rsi"] = ta.RSI(dataframe, timeperiod=int(self.exit_rsi_period.value))
 
         bollinger = qtpylib.bollinger_bands(
@@ -80,7 +77,6 @@ class BBandRSI(IStrategy):
             DataFrame: The DataFrame with the entry signal column updated.
         """
         conditions = [
-            (dataframe["entry_rsi"].shift(self.entry_shift.value) < self.entry_rsi_level.value),
             (qtpylib.crossed_above(dataframe["close"].shift(self.entry_shift.value), 
                                    dataframe["entry_bb_lu"]).shift(self.entry_shift.value)),
             (dataframe["volume"] > 0),
