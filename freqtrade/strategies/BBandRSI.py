@@ -4,9 +4,10 @@ import freqtrade.vendor.qtpylib.indicators as qtpylib
 
 from freqtrade.optimize.space import SKDecimal
 from freqtrade.strategy import (
-    DecimalParameter,
+    #DecimalParameter,
     IStrategy,
-    IntParameter,
+    #IntParameter,
+    CategoricalParameter
 )
 from pandas import DataFrame
 from functools import reduce
@@ -23,7 +24,7 @@ class BBandRSI(IStrategy):
     class HyperOpt:
         # Define a custom stoploss space.
         def stoploss_space():
-            return [SKDecimal(-0.1, -0.01, decimals=2, name="stoploss")]
+            return [SKDecimal(-0.3, -0.01, decimals=2, name="stoploss")]
 
     INTERFACE_VERSION: int = 3
 
@@ -32,13 +33,13 @@ class BBandRSI(IStrategy):
 
     timeframe = "1h"
 
-    entry_bb_period = IntParameter(10, 50, default=15, space="buy", optimize=True)
-    entry_bb_std = DecimalParameter(1.0, 5.0, default=2.0, decimals=1, space="buy", optimize=True)
-    entry_shift = IntParameter(0, 20, default=0, space="buy", optimize=True)
+    entry_bb_period = CategoricalParameter(np.arange(5, 100, 5), default=15, space="buy", optimize=True)
+    entry_bb_std = CategoricalParameter(np.arange(1.0, 3.0, 0.25), default=2.0, space="buy", optimize=True)
+    entry_shift = CategoricalParameter(np.arange(0, 30, 2), default=0, space="buy", optimize=True)
 
-    exit_rsi_period = IntParameter(10, 50, default=15, space="sell", optimize=True)
-    exit_rsi_level = IntParameter(50, 90, default=70, space="sell", optimize=True)
-    exit_shift = IntParameter(0, 20, default=0, space="sell", optimize=True)
+    exit_rsi_period = CategoricalParameter(np.arange(5, 100, 5), default=15, space="sell", optimize=True)
+    exit_rsi_level = CategoricalParameter(np.arange(50, 90, 10), default=70, space="sell", optimize=True)
+    exit_shift = CategoricalParameter(np.arange(0, 30, 2), default=0, space="sell", optimize=True)
 
     startup_candle_count: int = 50
 
@@ -105,4 +106,3 @@ class BBandRSI(IStrategy):
         dataframe.loc[reduce(lambda x, y: x & y, conditions), "exit_long"] = 1
 
         return dataframe
-
