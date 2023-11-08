@@ -1,7 +1,7 @@
 import pandas as pd
 import talib as ta
 
-def AvgVol(df, ma_period=14):
+def AverageVolume(df, ma_period=14):
     """
     Calculates the Average Volume over a specified period.
     
@@ -19,4 +19,4 @@ def AvgVol(df, ma_period=14):
 
 # Example usage:
 # Assuming 'data' is a pandas DataFrame with the required columns
-# data = AvgVol(data, ma_period=14)
+# data = AverageVolume(data, ma_period=14)
