@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import talib
 
-def CPI(dataframe, index_period=200, atr_period=40, smoothing=3):
+def CommercialProxiesIndex(dataframe, index_period=200, atr_period=40, smoothing=3):
     """
     Calculate the Commercial Proxies Index (CPI) for a given DataFrame.
 
@@ -59,4 +59,4 @@ def CPI(dataframe, index_period=200, atr_period=40, smoothing=3):
 
 # Example usage:
 # df = pd.read_csv('path_to_your_csv_file.csv')
-# df['CPI'] = CPI(df)
+# df['CPI'] = CommercialProxiesIndex(df)
