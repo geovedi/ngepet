@@ -7,7 +7,7 @@ def CPI(dataframe, index_period=200, atr_period=40, smoothing=3):
     Calculate the Commercial Proxies Index (CPI) for a given DataFrame.
 
     Args:
-    dataframe: A pandas DataFrame which must contain 'open', 'high', 'low', 'close' columns.
+    dataframe: A pandas DataFrame containing 'high', 'low', 'open', 'close', and 'volume' columns.
     index_period: The lookback period to find the highest and lowest Value1 for normalization.
     atr_period: The period for calculating the Average True Range (ATR).
     smoothing: The period for the Simple Moving Average (SMA) of the final CPI value.
@@ -59,4 +59,4 @@ def CPI(dataframe, index_period=200, atr_period=40, smoothing=3):
 
 # Example usage:
 # df = pd.read_csv('path_to_your_csv_file.csv')
-# df['CPI'] = calculate_cpi(df)
+# df['CPI'] = CPI(df)
