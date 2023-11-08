@@ -1,71 +1,71 @@
-import numpy as np
 import pandas as pd
-import talib
+import numpy as np
+import talib.abstract as ta
 
-def QQE(dataframe, rsi_period=14, sf=5, wf=4.236):
+def QQE(dataframe, rsi_period=14, sF=5, wF=4.236):
+    """
+    Calculate QQE (Quantitative Qualitative Estimation) indicator components for a given pandas DataFrame.
+
+    Args:
+        dataframe (pd.DataFrame): DataFrame with columns ['high', 'low', 'open', 'close', 'volume'].
+        rsi_period (int): RSIPeriod parameter for QQE (default is 14).
+        sF (int): sF parameter for QQE (default is 5).
+        wF (float): wF parameter for QQE (default is 4.236).
+
+    Returns:
+        pd.Series: qqe_value1
+        pd.Series: qqe_value2
+    """
     df = dataframe.copy()
     
-    # Calculate the Wilders Period
     wilders_period = rsi_period * 2 - 1
-    start_bar = sf if wilders_period < sf else wilders_period
     
-    rsi_handle = talib.RSI(df["close"].values, timeperiod=rsi_period)
+    rsi_values = ta.RSI(df, timeperiod=rsi_period)["RSI"]
+    rsi_ema_values = ta.EMA(rsi_values, timeperiod=sF)
     
-    # Initialize indicator buffers
-    rsi_ma = np.zeros(len(df))
-    tr_level_slow = np.zeros(len(df))
-    rsi_values = np.zeros(len(df))
-    atr_rsi = np.zeros(len(df))
-    ma_atr_rsi = np.zeros(len(df))
-    ma_atr_rsi_wp = np.zeros(len(df))
+    atr_rsi_values = pd.Series(index=df.index)
+    ma_atr_rsi_values = pd.Series(index=df.index)
     
-    for i in range(1, len(df)):
-        rsi_values[i] = rsi_handle[i]
-        rsi_ma[i] = rsi_values[i]
+    for i in range(len(df)):
+        if i == 0:
+            atr_rsi_values.iloc[i] = 0
+            ma_atr_rsi_values.iloc[i] = 0
+        else:
+            atr_rsi_values.iloc[i] = abs(rsi_values.iloc[i-1] - rsi_ema_values.iloc[i])
+            ma_atr_rsi_values.iloc[i] = atr_rsi_values.iloc[i:].rolling(window=wilders_period).mean().iloc[0]
     
-    for i in range(1, len(df)):
-        rsi_ma[i] = rsi_ma[i] * (2.0 / (1 + sf)) + (1 - (2.0 / (1 + sf))) * rsi_ma[i - 1]
-        atr_rsi[i] = abs(rsi_ma[i - 1] - rsi_ma[i])
-        ma_atr_rsi[i] = atr_rsi[i]
+    qqe_value1 = rsi_ema_values.copy()
+    qqe_value2 = rsi_ema_values.copy()
     
-    for i in range(1, len(df)):
-        ma_atr_rsi[i] = ma_atr_rsi[i] * (2.0 / (1 + wilders_period)) + (1 - (2.0 / (1 + wilders_period))) * ma_atr_rsi[i - 1]
-        ma_atr_rsi_wp[i] = ma_atr_rsi[i]
-    
-    i = len(df) - 1
-    tr = tr_level_slow[i - 1]
-    rsi1 = rsi_ma[i - 1]
-    
-    while i >= 1:
-        rsi0 = rsi_ma[i]
-        ma_atr_rsi_wp[i] = ma_atr_rsi_wp[i] * (2.0 / (1 + wilders_period)) + (1 - (2.0 / (1 + wilders_period))) * ma_atr_rsi_wp[i - 1]
-        dar = ma_atr_rsi_wp[i] * wf
+    for i in range(len(df)):
+        rsi0 = rsi_ema_values.iloc[i]
+        rsi1 = rsi_ema_values.iloc[i-1] if i > 0 else rsi0
+        dv = rsi_values.iloc[i-1] if i > 0 else rsi0
         
-        dv = tr
+        atr_rsi = atr_rsi_values.iloc[i]
+        ma_atr_rsi = ma_atr_rsi_values.iloc[i]
+        
+        dar = ma_atr_rsi * wF
+        tr = qqe_value2.iloc[i-1] if i > 0 else qqe_value2.iloc[i]
+        
         if rsi0 < tr:
             tr = rsi0 + dar
-            if rsi1 < dv:
-                if tr > dv:
-                    tr = dv
+            if rsi1 < dv and tr > dv:
+                tr = dv
         elif rsi0 > tr:
             tr = rsi0 - dar
-            if rsi1 > dv:
-                if tr < dv:
-                    tr = dv
-        tr_level_slow[i] = tr
-        rsi1 = rsi0
-        i -= 1
+            if rsi1 > dv and tr < dv:
+                tr = dv
+        
+        qqe_value1.iloc[i] = rsi0
+        qqe_value2.iloc[i] = tr
+        
+    qqe_value1.name = 'qqe_value1'
+    qqe_value2.name = 'qqe_value2'
     
-    rsi_ma_series = pd.Series(rsi_ma, name="rsi_ma")
-    tr_level_slow_series = pd.Series(tr_level_slow, name="tr_level_slow")
-    rsi_values_series = pd.Series(rsi_values, name="rsi")
-    atr_rsi_series = pd.Series(atr_rsi, name="atr_rsi")
-    ma_atr_rsi_series = pd.Series(ma_atr_rsi, name="ma_atr_rsi")
-    ma_atr_rsi_wp_series = pd.Series(ma_atr_rsi_wp, name="ma_atr_rsi_wp")
-    
-    return rsi_ma_series, tr_level_slow_series, rsi_values_series, atr_rsi_series, ma_atr_rsi_series, ma_atr_rsi_wp_series
+    return qqe_value1, qqe_value2
 
 # Example usage:
-# Replace df with your pandas DataFrame containing columns ['close']
-# Call the function with your desired parameters
-#rsi_ma, tr_level_slow, rsi_values, atr_rsi, ma_atr_rsi, ma_atr_rsi_wp = QQE(df)
+# Replace df with your pandas DataFrame containing columns ['open', 'high', 'low', 'close', 'volume']
+# Call the function as follows:
+# qqe_value1, qqe_value2 = QQE(df, rsi_period=14, sF=5, wF=4.236)
