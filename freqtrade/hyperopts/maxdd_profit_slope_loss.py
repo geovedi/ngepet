@@ -36,6 +36,7 @@ class MaxDrawdownProfitSlopeLoss(IHyperOptLoss):
         Returns:
             float: Loss score for optimization.
         """
+
         # Calculate cumulative profit over trades
         profits = results["profit_abs"].cumsum()
         starting_balance = config["dry_run_wallet"]
@@ -64,7 +65,6 @@ class MaxDrawdownProfitSlopeLoss(IHyperOptLoss):
                     relative=True,
                 )[0]
             except ValueError:
-                # Assign a small non-zero value if there's no drawdown
                 sim_max_dd = 1e-5
 
             sim_results.append((sim_net_profit, sim_max_dd))
