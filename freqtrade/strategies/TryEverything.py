@@ -82,11 +82,11 @@ class TryEverything(IStrategy):
             "slowk", "slowd",
             "fastk", "fastd",
             # Single output indicators
-            "adx", "adxr", "apo", "aroonosc", "atr", "bop", "cci", "cmo",
-            "dema", "dx", "ema", "ht_trendline", "kama", "ma", "mfi", 
-            "minus_di", "minus_dm", "mom", "plus_di", "plus_dm", "ppo", "roc",
-            "rocp", "rsi", "sar", "sarext", "sma", "tema", "trima", "trix",
-            "ultosc", "willr", "wma",
+            "ad", "adosc", "adx", "adxr", "apo", "aroonosc", "atr", "bop", 
+            "cci", "cmo", "dema", "dx", "ema", "ht_trendline", "kama", "ma", 
+            "mfi", "minus_di", "minus_dm", "mom", "obv", "plus_di", "plus_dm", 
+            "ppo", "roc", "rocp", "rsi", "sar", "sarext", "sma", "tema", 
+            "trima", "trix", "ultosc", "willr", "wma",
         ]
         signal_ops = [
             "disabled", "crossed_above", "crossed_below", "raising", "falling"
@@ -136,11 +136,11 @@ class TryEverything(IStrategy):
 
         # Single-output indicators
         single_output_indicators = [
-            "ADX", "ADXR", "APO", "AROONOSC", "ATR", "BOP", "CCI", "CMO",
-            "DEMA", "DX", "EMA", "HT_TRENDLINE", "KAMA", "MA", "MFI",
-            "MINUS_DI", "MINUS_DM", "MOM", "PLUS_DI", "PLUS_DM", "PPO", "ROC", 
-            "ROCP", "RSI", "SAR", "SAREXT", "SMA", "TEMA", "TRIMA", "TRIX",
-            "ULTOSC", "WILLR", "WMA",
+            "AD", "ADOSC", "ADX", "ADXR", "APO", "AROONOSC", "ATR", "BOP", 
+            "CCI", "CMO", "DEMA", "DX", "EMA", "HT_TRENDLINE", "KAMA", "MA", 
+            "MFI", "MINUS_DI", "MINUS_DM", "MOM", "OBV", "PLUS_DI", "PLUS_DM", 
+            "PPO", "ROC", "ROCP", "RSI", "SAR", "SAREXT", "SMA", "TEMA", 
+            "TRIMA", "TRIX", "ULTOSC", "WILLR", "WMA",
             "AVGPRICE", "MEDPRICE", "TYPPRICE", "WCLPRICE",
         ]
 
