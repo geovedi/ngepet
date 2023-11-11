@@ -75,19 +75,18 @@ class TryEverything(IStrategy):
     def _define_parameters_for_side(self, side: str, default_indicator: str):
         indicators = [
             # Multiple output indicators
-            "bband_upper", "bband_middle", "bband_lower",
+            "upperband", "middleband", "lowerband",
             "mama", "fama",
-            "aroon_up", "aroon_down",
-            "macd", "macd_signal", "macd_hist",
-            "stoch_slowk", "stoch_slowd",
-            "stochf_fastk", "stochf_fastd", 
-            "stochrsi_fastk", "stochrsi_fastd",
+            "aroondown", "aroonup",
+            "macd", "macdsignal", "macdhist",
+            "slowk", "slowd",
+            "fastk", "fastd",
             # Single output indicators
-            "adx", "adxr", "apo", "aroonosc", "bop", "cci", "cmo", "dema", 
-            "dx", "ema", "ht_trendline", "kama", "ma", "mfi", "minus_di", 
-            "minus_dm", "mom", "plus_di", "plus_dm", "ppo", "roc", "rocp",
-            "rsi", "sar", "sarext", "sma", "tema", "trima", "trix", "ultosc",
-            "willr", "wma",
+            "adx", "adxr", "apo", "aroonosc", "atr", "bop", "cci", "cmo",
+            "dema", "dx", "ema", "ht_trendline", "kama", "ma", "mfi", 
+            "minus_di", "minus_dm", "mom", "plus_di", "plus_dm", "ppo", "roc",
+            "rocp", "rsi", "sar", "sarext", "sma", "tema", "trima", "trix",
+            "ultosc", "willr", "wma",
         ]
         signal_ops = [
             "disabled", "crossed_above", "crossed_below", "raising", "falling"
@@ -122,27 +121,26 @@ class TryEverything(IStrategy):
                             metadata: dict) -> DataFrame:
         # Multiple-output indicators
         multi_output_indicators = {
-            "BBANDS": ("bband_upper", "bband_middle", "bband_lower"),
+            "BBANDS": ("upperband", "middleband", "lowerband"),
             "MAMA": ("mama", "fama"),
-            "AROON": ("aroon_up", "aroon_down"),
-            "MACD": ("macd", "macd_signal", "macd_hist"),
-            "STOCH": ("stoch_slowk", "stoch_slowd"),
-            "STOCHF": ("stochf_fastk", "stochf_fastd"),
-            "STOCHRSI": ("stochrsi_fastk", "stochrsi_fastd"),
+            "AROON": ("aroondown", "aroonup"),
+            "MACD": ("macd", "macdsignal", "macdhist"),
+            "STOCH": ("slowk", "slowd"),
+            "STOCHF": ("fastk", "fastd"),
         }
 
         for indicator, column_names in multi_output_indicators.items():
-            indicator_results = getattr(ta, indicator)(dataframe)
+            results = getattr(ta, indicator)(dataframe)
             for i, column_name in enumerate(column_names):
-                dataframe[column_name] = list(indicator_results)[i]
+                dataframe[column_name] = results[column_name]
 
         # Single-output indicators
         single_output_indicators = [
-            "ADX", "ADXR", "APO", "AROONOSC", "BOP", "CCI", "CMO", "DEMA", 
-            "DX", "EMA", "HT_TRENDLINE", "KAMA", "MA", "MFI", "MINUS_DI",
-            "MINUS_DM", "MOM", "PLUS_DI", "PLUS_DM", "PPO", "ROC", "ROCP",
-            "RSI", "SAR", "SAREXT", "SMA", "TEMA", "TRIMA", "TRIX", "ULTOSC",
-            "WILLR", "WMA",
+            "ADX", "ADXR", "APO", "AROONOSC", "ATR", "BOP", "CCI", "CMO",
+            "DEMA", "DX", "EMA", "HT_TRENDLINE", "KAMA", "MA", "MFI",
+            "MINUS_DI", "MINUS_DM", "MOM", "PLUS_DI", "PLUS_DM", "PPO", "ROC", 
+            "ROCP", "RSI", "SAR", "SAREXT", "SMA", "TEMA", "TRIMA", "TRIX",
+            "ULTOSC", "WILLR", "WMA",
             "AVGPRICE", "MEDPRICE", "TYPPRICE", "WCLPRICE",
         ]
 
