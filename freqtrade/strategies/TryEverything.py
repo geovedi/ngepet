@@ -66,9 +66,12 @@ class TryEverything(IStrategy):
             "plus_di plus_dm ppo roc rocp rsi sar sarext sma tema trima "
             "trix ultosc willr wma"
         ).split()
-        operation_types = "disabled crossed_above crossed_below raising falling".split()
+        operation_types = (
+            "disabled crossed_above crossed_below greater_than lesser_than "
+            "raising falling"
+        ).split()
         price_types = "open high low close avgprice medprice typprice wclprice".split()
-        shifts = range(0, 10, 2)  # Shifts range
+        shifts = range(0, 10)
 
         for rule_index in range(self.RULES_SIZE):
             self.create_categorical_parameter(
@@ -138,6 +141,10 @@ class TryEverything(IStrategy):
                 conditions.append(is_rising(series, shift_value + 1))
             elif operator == "falling":
                 conditions.append(is_falling(series, shift_value + 1))
+            elif operator == "greater_than":
+                conditions.append(series > shifted_series)
+            elif operator == "lesser_than":
+                conditions.append(series < shifted_series)
 
         conditions.append(dataframe["volume"] > 0)
         return conditions
