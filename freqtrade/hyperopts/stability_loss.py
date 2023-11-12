@@ -9,7 +9,7 @@ class StabilityLoss(IHyperOptLoss):
                                *args, **kwargs) -> float:
         returns = results['profit_abs'].cumsum()
         trendline = np.linspace(returns.iloc[0], returns.iloc[-1], trade_count)
-        similarity = np.corrcoef(returns, trendline, 1)[0, 1]
+        similarity = np.corrcoef(returns, trendline)[0, 1]
         stability = similarity ** 2
 
         return 9999.0 if returns.iloc[-1] <= 0 else -stability
