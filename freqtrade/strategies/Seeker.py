@@ -14,9 +14,9 @@ from freqtrade.optimize.space import Categorical, SKDecimal, Dimension
 class Seeker(IStrategy):
     INTERFACE_VERSION = 3
     process_only_new_candles = True
-    can_short: False
+    can_short = False
     stoploss = -0.06
-    minimal_roi = {"0": 0.1}
+    minimal_roi = {"0": 0.1, "20160": 0}
     trailing_stop = False
     trailing_stop_positive = 0.02
     trailing_stop_positive_offset = 0.03
@@ -36,10 +36,10 @@ class Seeker(IStrategy):
             return [SKDecimal(0.03, 0.30, decimals=2, name="roi")]
 
         def generate_roi_table(p: Dict) -> Dict[int, float]:
-            return {0: p["roi"]}
-        
+            return {0: p["roi"], 20160: 0}
+
         def max_open_trades_space() -> List[Dimension]:
-            return [Categorical(range(5, 20, 5), name="max_open_trades")]
+            return [Categorical(range(4, 20, 2), name="max_open_trades")]
 
     def __init__(self, config: Config):
         super().__init__(config)
@@ -73,7 +73,7 @@ class Seeker(IStrategy):
         """.split()
         OPERATORS = ["DISABLED", "CROSS_UP", "CROSS_DOWN", "GREATER_THAN", "LESSER_THAN", "RAISING", "FALLING"]
         SHIFT_RANGE = range(0, 10, 2)
-        SMOOTH_RANGE = range(5, 50, 5)
+        SMOOTH_RANGE = range(5, 20, 5)
 
         setattr(self, "smooth", CategoricalParameter(SMOOTH_RANGE, default=5, space="buy"))
 
