@@ -68,7 +68,7 @@ class Seeker(IStrategy):
 
     def initialize_parameters(self):
         SERIES = """upperband lowerband macd macdsignal slowk slowd fastk fastd
-        adx atr cci ema mom roc rsi sma
+        adx atr cci mom roc rsi
         close volume
         """.split()
         OPERATORS = ["DISABLED", "CROSS_UP", "CROSS_DOWN", "GREATER_THAN", "LESSER_THAN", "RAISING", "FALLING"]
@@ -91,7 +91,7 @@ class Seeker(IStrategy):
             "STOCHF": ("fastk", "fastd"),
         }
 
-        single_output_indicators = """ADX ATR CCI EMA MOM ROC RSI SMA""".split()
+        single_output_indicators = """ADX ATR CCI MOM ROC RSI""".split()
         smooth = self.smooth.value
 
         for indicator_name, columns in multiple_output_indicators.items():
