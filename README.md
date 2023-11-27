@@ -1,2 +1,2 @@
 # ngepet
-Pelengkap ritual jaga lilin babi ngepet dan pesugihan lainnya
+Pelengkap ritual jaga lilin babi ngepet dan pesugihan digital lainnya
