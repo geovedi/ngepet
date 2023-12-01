@@ -87,7 +87,7 @@ class MultiMetricLoss(IHyperOptLoss):
             max_drawdown, 0.0, starting_balance * 2.0
         )
         normalized_trade_count = normalize_metric(trade_count, 0, 2000)
-        normalized_ret_dd_ratio = normalize_metric(ret_dd_ratio, 0, 3.0)
+        normalized_ret_dd_ratio = normalize_metric(ret_dd_ratio, 0, 6.0)
         normalized_sqn = normalize_metric(sqn, 0, 3.0)
 
         # Define weights for each metric
