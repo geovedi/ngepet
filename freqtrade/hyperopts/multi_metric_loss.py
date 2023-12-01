@@ -78,6 +78,7 @@ class MultiMetricLoss(IHyperOptLoss):
         cagr = calculate_cagr(backtest_days, starting_balance, final_balance)
         ret_dd_ratio = (final_balance - starting_balance) / (max_drawdown + 1e5)
         sqn = calculate_sqn(results)
+        roi = ((final_balance - starting_balance) / starting_balance) * 100
 
         # XXX: Normalize metrics -- ADJUST TO YOUR NEED!
         normalized_cagr = normalize_metric(cagr, 0.0, (backtest_days / 365) * 100)
@@ -89,14 +90,16 @@ class MultiMetricLoss(IHyperOptLoss):
         normalized_trade_count = normalize_metric(trade_count, 0, 2000)
         normalized_ret_dd_ratio = normalize_metric(ret_dd_ratio, 0, 3.0)
         normalized_sqn = normalize_metric(sqn, 0, 3.0)
+        normalized_roi = normalize_metric(roi, 0, 300.0)
 
         # Define weights for each metric
         weights = {
             "cagr": 1.0,
             "sharpe": 0.5,
             "profit_factor": 0.5,
-            "ret_dd": 2.0,
+            "ret_dd": 1.0,
             "sqn": 1.0,
+            "roi": 2.0,
             "trade_count": 0.5,  # trade count might have less impact
             "drawdown": -2.0,  # negative weight for drawdown as we want to minimize it
         }
@@ -108,6 +111,7 @@ class MultiMetricLoss(IHyperOptLoss):
             + weights["profit_factor"] * normalized_profit_factor
             + weights["ret_dd"] * normalized_ret_dd_ratio
             + weights["sqn"] * normalized_sqn
+            + weights["roi"] * normalized_roi
             + weights["trade_count"] * normalized_trade_count
             + weights["drawdown"] * normalized_max_drawdown
         )
