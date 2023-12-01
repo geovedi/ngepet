@@ -79,7 +79,7 @@ class MultiMetricLoss(IHyperOptLoss):
         ret_dd_ratio = (final_balance - starting_balance) / (max_drawdown + 1e5)
         sqn = calculate_sqn(results)
 
-        # Normalize metrics
+        # XXX: Normalize metrics -- ADJUST TO YOUR NEED!
         normalized_cagr = normalize_metric(cagr, 0.0, (backtest_days / 365) * 100)
         normalized_sharpe_ratio = normalize_metric(sharpe_ratio, 0.0, 3.0)
         normalized_profit_factor = normalize_metric(profit_factor, 0.0, 3.0)
@@ -87,7 +87,7 @@ class MultiMetricLoss(IHyperOptLoss):
             max_drawdown, 0.0, starting_balance * 2.0
         )
         normalized_trade_count = normalize_metric(trade_count, 0, 2000)
-        normalized_ret_dd_ratio = normalize_metric(ret_dd_ratio, 0, 6.0)
+        normalized_ret_dd_ratio = normalize_metric(ret_dd_ratio, 0, 3.0)
         normalized_sqn = normalize_metric(sqn, 0, 3.0)
 
         # Define weights for each metric
