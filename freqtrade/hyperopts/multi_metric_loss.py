@@ -110,9 +110,9 @@ class MultiMetricLoss(IHyperOptLoss):
             weights["cagr"] * normalized_cagr
             + weights["sharpe"] * normalized_sharpe_ratio
             + weights["profit_factor"] * normalized_profit_factor
-            + weights["ret_dd"] * normalized_ret_dd_ratio
+            # + weights["ret_dd"] * normalized_ret_dd_ratio
             + weights["sqn"] * normalized_sqn
-            # + weights["roi"] * normalized_roi
+            + weights["roi"] * normalized_roi
             + weights["trade_count"] * normalized_trade_count
             + weights["drawdown"] * normalized_max_drawdown
         )
