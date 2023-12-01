@@ -82,7 +82,7 @@ class MultiMetricLoss(IHyperOptLoss):
                 weights['profit_factor'] * normalized_profit_factor +
                 weights['ret_dd'] * normalized_ret_dd_ratio +
                 weights['net_profit'] * normalized_net_profit +
-                weights['trade_count'] * normalized_trade_count -
+                weights['trade_count'] * normalized_trade_count +
                 weights['drawdown'] * normalized_max_drawdown)
 
         # Apply penalty if final balance is less than starting balance
