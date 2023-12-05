@@ -36,14 +36,17 @@ class MultiMetricLoss(IHyperOptLoss):
         total_profit = results["profit_abs"].sum()
         final_balance = start_balance + total_profit
         backtest_days = (max_date - min_date).days or 1
-        max_drawdown = abs(calculate_max_drawdown(results, value_col='profit_abs')[5])
+        try:
+            max_drawdown = abs(calculate_max_drawdown(results, value_col='profit_abs')[5])
+        except:
+            max_drawdown = 0.0
 
         total_profit_pct = total_profit / start_balance * 100.0
         cagr = calculate_cagr(backtest_days, start_balance, final_balance)
         sortino = calculate_sortino(results, min_date, max_date, start_balance)
         sharpe = calculate_sharpe(results, min_date, max_date, start_balance)
         calmar = calculate_calmar(results, min_date, max_date, start_balance)
-        max_drawdown_pct = (max_drawdown / start_balance * 100.0) if max_drawdown > 0 else 0
+        max_drawdown_pct = (max_drawdown / start_balance * 100.0)
 
         # XXX: Normalize metrics -- ADJUST TO YOUR NEED!
         normalized_profit = normalize_metric(total_profit_pct, 0, (backtest_days / 365) * 100)
