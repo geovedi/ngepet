@@ -74,7 +74,7 @@ class MultiMetricLoss(IHyperOptLoss):
         )
 
         # Apply penalty if final balance is less than starting balance
-        if final_balance < starting_balance:
+        if final_balance < start_balance:
             return abs(loss) * 100.0
 
         return -loss
