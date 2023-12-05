@@ -70,7 +70,7 @@ class MultiMetricLoss(IHyperOptLoss):
             + weights["sortino"] * normalized_sortino
             + weights["sharpe"] * normalized_sharpe
             + weights["calmar"] * normalized_calmar
-            + weights["drawdown"] * normalized_max_drawdown
+            + weights["drawdown"] * normalized_drawdown
         )
 
         # Apply penalty if final balance is less than starting balance
