@@ -1,0 +1,15 @@
+strategy_name: "Seeker"
+user_dir: "/freqtrade/user_data"
+result_dir: "/freqtrade/user_data/hyperopt_results"
+base_config_file: "/freqtrade/user_data/config.json"
+strategy_config_file: "/freqtrade/user_data/config-seeker.json"
+strategy_param_file: "/freqtrade/user_data/strategies/Seeker.json"
+hyperopt_loss: "MultiMetricLoss"
+time_range: "20211101-20231101"
+time_frame: "12h"
+time_frame_detail: "1h"
+fee: 0.001
+epoch_count: 200
+max_strategies: 20
+min_total_profit: 10000.0
+min_objective: -3.0
