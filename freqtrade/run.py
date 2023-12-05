@@ -42,8 +42,10 @@ def run_freqtrade_command(command_args, config):
 
 def run_hyperopt(config, is_first_run=True):
     clear_previous_results(config)
-    spaces = ["buy", "sell", "roi", "stoploss", "trades"
-              ] if is_first_run else ["trades", "trailing"]
+    spaces = (
+        ["buy", "sell", "roi", "stoploss", "trades"] 
+        if is_first_run else ["trades", "trailing"]
+    )
     run_freqtrade_command([
         "freqtrade", "hyperopt",
         "--hyperopt-loss", config['hyperopt_loss'],
@@ -67,8 +69,8 @@ def process_hyperopt_results(fname, config):
     run_freqtrade_command([
         "freqtrade", "hyperopt-list", 
         "--hyperopt-filename", os.path.basename(fname), 
-        "--min-total-profit", config['min_total_profit'], 
-        "--min-objective", config['min_objective'], 
+        "--min-total-profit", str(config['min_total_profit']), 
+        "--min-objective", str(config['min_objective']), 
         "--export-csv", csvfile
     ], config)
 
