@@ -10,7 +10,7 @@ def to_base36(num):
     if num == 0:
         return "0"
 
-    base36 = [str(i) for i in range(10)] + [chr(i) for i in range(65, 91)]
+    base36 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     result = ""
 
     while num > 0:
