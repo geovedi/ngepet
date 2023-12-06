@@ -23,7 +23,6 @@ def to_base36(num):
     return result
 
 
-
 def clear_previous_results(config):
     for file in glob.glob(
             f"{config['result_dir']}/strategy_{config['strategy_name']}_*"):
@@ -41,7 +40,12 @@ def run_freqtrade_command(command_args, config):
         "--config", config['base_config_file'], 
         "--config", config['strategy_config_file']
     ]
-    subprocess.run(cmd)
+
+    try:
+        subprocess.run(cmd)
+    except KeyboardInterrupt:
+        import sys
+        sys.exit()
 
 
 def run_hyperopt(config, is_first_run=True):
@@ -89,13 +93,14 @@ def process_hyperopt_results(fname, config):
             short_code = to_base36(int(re.sub("[^\d]", "", fname)))
             output_dir = (
                 f"{config['user_dir']}/strategies/"
-                f"{config['strategy_name']}.{short_code}.{index}"
+                f"{config['strategy_name']}.{short_code}.{index:03d}"
             )
-            print(f"{config['strategy_name']}.{short_code}.{index}")
+            print(f"{config['strategy_name']}.{short_code}.{index:03d}")
 
             run_freqtrade_command([
-                "freqtrade", "hyperopt-show", "--hyperopt-filename",
-                os.path.basename(fname), "--index", index
+                "freqtrade", "hyperopt-show", 
+                "--hyperopt-filename", os.path.basename(fname), 
+                "--index", index
             ], config)
 
             if not os.path.exists(output_dir):
