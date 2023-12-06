@@ -7,17 +7,21 @@ import yaml
 
 
 def to_base36(num):
+    if num < 0:
+        raise ValueError("Number must be non-negative")
+
     if num == 0:
         return "0"
 
-    base36 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    base36_chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     result = ""
 
     while num > 0:
         num, remainder = divmod(num, 36)
-        result = base36[remainder] + result
+        result = base36_chars[remainder] + result
 
     return result
+
 
 
 def clear_previous_results(config):
