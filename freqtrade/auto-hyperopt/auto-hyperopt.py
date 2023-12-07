@@ -51,22 +51,21 @@ def run_freqtrade_command(command_args, config):
         sys.exit()
 
 
-def run_hyperopt(config, is_first_run=True, strategy_path=None):
+def run_hyperopt(config, is_fine_tune=False, strategy_path=None):
     clear_previous_results(config)
 
-    spaces = ["trades", "trailing"]
-    if is_first_run:
-        spaces = ["buy", "sell", "roi", "stoploss", "trades"]
+    spaces = ["buy", "sell", "roi", "stoploss", "trades"]
+    epochs = str(config["epoch_count"])
 
-    epochs = "100"
-    if is_first_run:
-        epochs = str(config["epoch_count"])
+    if is_fine_tune:
+        spaces = ["trades", "trailing"]
+        epochs = "100"
 
-    cmd = build_command(config, epochs, spaces, is_first_run, strategy_path)
+    cmd = build_command(config, epochs, spaces, is_fine_tune, strategy_path)
     run_freqtrade_command(cmd, config)
 
 
-def build_command(config, epochs, spaces, is_first_run, strategy_path):
+def build_command(config, epochs, spaces, is_fine_tune, strategy_path):
     cmd = [
         "freqtrade", "hyperopt",
         "--hyperopt-loss", config["hyperopt_loss"],
@@ -80,7 +79,7 @@ def build_command(config, epochs, spaces, is_first_run, strategy_path):
         "--spaces", *spaces,
     ]
 
-    if not is_first_run:
+    if is_fine_tune:
         cmd.extend(["--timeframe-detail", config["time_frame_detail"]])
 
     if strategy_path:
@@ -223,7 +222,7 @@ def main():
         if os.path.isdir(strat_dir):
             if not args.skip_fine_tune:
                 # Fine-tune candidate
-                run_hyperopt(config, is_first_run=False, strategy_path=strat_dir)
+                run_hyperopt(config, is_fine_tune=True, strategy_path=strat_dir)
 
             if not args.skip_backtest:
                 # Backtesting candidate
