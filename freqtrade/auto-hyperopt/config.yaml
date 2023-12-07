@@ -9,7 +9,7 @@ time_range: "20211101-20231101"
 time_frame: "12h"
 time_frame_detail: "1h"
 fee: 0.001
-epoch_count: 200
-max_strategies: 20
+epoch_count: 500
+max_strategies: 50
 min_total_profit: 10000.0
-min_objective: -3.0
+min_objective: -3.00
