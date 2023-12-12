@@ -6,6 +6,8 @@ import re
 import yaml
 import shutil
 
+import warnings
+warnings.filterwarnings('ignore')
 
 def to_base36(num):
     if num < 0:
@@ -51,36 +53,35 @@ def run_freqtrade_command(command_args, config):
         sys.exit()
 
 
-def run_hyperopt(config, is_fine_tune=False, strategy_path=None):
+def run_hyperopt(config, is_finetune=False, strategy_path=None):
     clear_previous_results(config)
 
     spaces = ["buy", "sell", "roi", "stoploss", "trades"]
     epochs = str(config["epoch_count"])
 
-    if is_fine_tune:
+    if is_finetune:
         spaces = ["trades", "trailing"]
         epochs = "100"
 
-    cmd = build_command(config, epochs, spaces, is_fine_tune, strategy_path)
+    cmd = build_command(config, epochs, spaces, is_finetune, strategy_path)
     run_freqtrade_command(cmd, config)
 
 
-def build_command(config, epochs, spaces, is_fine_tune, strategy_path):
+def build_command(config, epochs, spaces, is_finetune, strategy_path):
     cmd = [
         "freqtrade", "hyperopt",
         "--hyperopt-loss", config["hyperopt_loss"],
         "--strategy", config["strategy_name"],
         "--fee", str(config["fee"]),
-        "--timerange", config["time_range"],
-        "--timeframe", config["time_frame"],
+        "--timerange", config["timerange"],
+        "--timeframe", config["timeframe"],
         "--print-all",
-        "--min-trades", "1",
         "--epochs", epochs,
         "--spaces", *spaces,
     ]
 
-    if is_fine_tune:
-        cmd.extend(["--timeframe-detail", config["time_frame_detail"]])
+    if is_finetune:
+        cmd.extend(["--timeframe-detail", config["timeframe_detail_finetune"]])
 
     if strategy_path:
         cmd.extend(["--strategy-path", strategy_path])
@@ -89,19 +90,13 @@ def build_command(config, epochs, spaces, is_fine_tune, strategy_path):
 
 
 def process_hyperopt_results(fname, config):
-    csvfile = generate_csv_filename(fname, config)
+    csvfile = f"{config['result_dir']}/{os.path.basename(fname).replace('.fthypt', '.csv')}"
     generate_csv_file(fname, csvfile, config)
 
     if is_csv_empty(csvfile):
         return 0
 
     return process_csv_file(csvfile, fname, config)
-
-
-def generate_csv_filename(fname, config):
-    return (
-        f"{config['result_dir']}/{os.path.basename(fname).replace('.fthypt', '.csv')}"
-    )
 
 
 def generate_csv_file(fname, csvfile, config):
@@ -135,9 +130,9 @@ def process_csv_file(csvfile, fname, config):
 def process_csv_line(line, fname, config, strategy_count):
     index = line.split(",")[1].strip()
     short_code = to_base36(int(re.sub("[^\d]", "", fname)))
-    output_dirname = f"{config['strategy_name']}.{short_code}.{int(index):03d}"
-    output_dir = f"{config['user_dir']}/strategies/{output_dirname}"
-    print(f"Preparing new configuration: {output_dirname}")
+    new_strat_name = f"{config['strategy_name']}-{short_code}-{int(index):03d}"
+    output_dir = f"{config['user_dir']}/strategies/{new_strat_name}"
+    print(f"Preparing new Strategy configuration: {new_strat_name}")
 
     run_freqtrade_command(
         [
@@ -187,9 +182,9 @@ def main():
         help="Skip the candidate generation step",
     )
     parser.add_argument(
-        "--skip-fine-tune",
+        "--skip-finetune",
         action="store_true",
-        help="Skip the fine-tuning step",
+        help="Skip the finetuning step",
     )
     parser.add_argument(
         "--skip-backtest",
@@ -202,7 +197,7 @@ def main():
         config = yaml.safe_load(file)
 
     strategy_dirs = glob.glob(
-        f"{config['user_dir']}/strategies/{config['strategy_name']}.*.*"
+        f"{config['user_dir']}/strategies/{config['strategy_name']}-*-*"
     )
     strategy_count = len(strategy_dirs)
 
@@ -220,21 +215,24 @@ def main():
 
     for strat_dir in strategy_dirs:
         if os.path.isdir(strat_dir):
-            if not args.skip_fine_tune:
-                # Fine-tune candidate
-                run_hyperopt(config, is_fine_tune=True, strategy_path=strat_dir)
+            if not args.skip_finetune:
+                # finetune candidate
+                run_hyperopt(config, is_finetune=True, strategy_path=strat_dir)
 
             if not args.skip_backtest:
                 # Backtesting candidate
+                strat_name = os.path.basename(strat_dir).replace('.', '-')
                 run_freqtrade_command(
                     [
                         "freqtrade", "backtesting",
                         "--strategy", config["strategy_name"],
                         "--strategy-path", strat_dir,
                         "--fee", str(config["fee"]),
-                        "--timerange", config["time_range"],
-                        "--timeframe", config["time_frame"],
-                        "--timeframe-detail", config["time_frame_detail"],
+                        "--timerange", config["timerange"],
+                        "--timeframe", config["timeframe"],
+                        "--timeframe-detail", config["timeframe_detail_backtest"],
+                        "--export-filename", f"backtest_results/{strat_name}.json",
+                        "--stake-amount", str(config["stake_amount_backtest"]),
                     ],
                     config,
                 )
