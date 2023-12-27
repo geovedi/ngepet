@@ -52,11 +52,11 @@ class MultiMetricLoss(IHyperOptLoss):
 
         # XXX: Normalize metrics -- ADJUST TO YOUR NEED!
         normalized_profit = normalize_metric(total_profit_pct, 0, (backtest_days / 365) * 100)
-        normalized_cagr = normalize_metric(cagr, 0, 120.0)
-        normalized_sortino = normalize_metric(sortino, 0, 15.0)
-        normalized_sharpe = normalize_metric(sharpe, 0, 7.0)
-        normalized_calmar = normalize_metric(calmar, 0, 80.0)
-        normalized_drawdown = normalize_metric(max_drawdown_pct, 0, 20.0)
+        normalized_cagr = normalize_metric(cagr, 0, 200.0)
+        normalized_sortino = normalize_metric(sortino, 0, 100.0)
+        normalized_sharpe = normalize_metric(sharpe, 0, 10.0)
+        normalized_calmar = normalize_metric(calmar, 0, 100.0)
+        normalized_drawdown = normalize_metric(max_drawdown_pct, 0, 50.0)
 
         # Define weights for each metric
         weights = {
