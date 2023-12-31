@@ -36,7 +36,7 @@ def main(directory_path, timeframe, timeperiod, min_val, max_val):
     combined_data = pd.concat(combined_data, axis=1)
     counts = combined_data.apply(calculate_counts)
     filtered_counts = counts[(counts.abs() >= min_val) & (counts.abs() <= max_val)]
-    result = filtered_counts.iloc[-1].dropna().sort_values()
+    result = counts.iloc[-1].dropna().sort_values()
 
     print(result)
 
