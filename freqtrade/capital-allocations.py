@@ -18,14 +18,13 @@ def autorename_columns(df):
     new_columns = list(map("-".join, unique_tokens))
     return df.rename(columns=dict(zip(df.columns, new_columns)))
 
-def round100(x):
-    return (x // 100) * 100
 
 def main(
     capital=5000.0,
     resample_mode="W",
     roc_period=4,
     ema_period=8,
+    round_step=100,
     user_dir="/home/ubuntu/freqtrade/user_data",
 ):
     df_list = list()
@@ -55,7 +54,9 @@ def main(
     print("\nWeights:")
     print(W.tail(10).round(2))
 
-    allocations = (capital * W).iloc[-1].apply(round100)
+    rounding = lambda x: (x // round_step) * round_step
+
+    allocations = (capital * W).iloc[-1].apply(rounding)
 
     print(f"\nSuggested capital allocations: {allocations.sum()}")
     print(
