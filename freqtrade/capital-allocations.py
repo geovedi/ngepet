@@ -39,7 +39,6 @@ def main(
             columns={"close_date": "date", "profit_abs": strategy_name}
         )
         df.set_index("date", inplace=True)
-        df = df.resample("D").sum()
         df_list.append(df)
 
     df = pd.concat(df_list).resample(resample_mode).sum().cumsum()
