@@ -3,8 +3,13 @@ import fire
 import pandas as pd
 import numpy as np
 from pathlib import Path
+
+import warnings
+warnings.simplefilter("ignore", UserWarning)
+
 from tslearn.clustering import TimeSeriesKMeans
 from tslearn.preprocessing import TimeSeriesScalerMeanVariance
+
 
 
 def load_data(pair_list, timeframe):
@@ -26,7 +31,6 @@ def main(pair_file, timeframe="4h", n_clusters=10, seed=1337):
 
     df = load_data(pair_list, timeframe)
     df = df.dropna()
-    print(df.head())
 
     X = TimeSeriesScalerMeanVariance().fit_transform(df.T)
 
@@ -36,7 +40,8 @@ def main(pair_file, timeframe="4h", n_clusters=10, seed=1337):
     for key, group in itertools.groupby(
         sorted(zip(clusters, df.columns)), lambda x: x[0]
     ):
-        print(key, ",".join([x[1] for x in group]))
+        sorted_group = sorted([(pair_list.index(x[1]), x[1]) for x in group])
+        print(key, ", ".join(f"({a} {b})" for (a, b) in sorted_group))
 
 
 if __name__ == "__main__":
