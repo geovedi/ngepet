@@ -15,6 +15,7 @@ sns.set(font_scale=0.8)
 
 INITIAL_BALANCE = 1_000
 DATA_DIR = "/home/ubuntu/streamlit/data/USDT"
+PORTFOLIO_NUM_STRATEGIES = 5
 
 LIV1_STRATEGIES = [
     "Evolver_000f_0078",
@@ -174,7 +175,7 @@ def display_portfolio_comparison(data):
         df = df.sort_values(by=column, ascending=False)
         df["base"] = df.index.map(lambda x: x.split("_")[1])
         df = df.drop_duplicates(subset="base", keep="first")
-        strategies = df.head(5).index.tolist()
+        strategies = df.head(PORTFOLIO_NUM_STRATEGIES).index.tolist()
         df_dict[porto] = data["daily_profit"][strategies].cumsum(axis=0).sum(axis=1)
 
     df = pd.concat(df_dict, axis=1)
@@ -281,7 +282,7 @@ def ratio_driven_page(title, ratio_column, data):
     df = df.sort_values(by=ratio_column, ascending=False)
     df["base"] = df.index.map(lambda x: x.split("_")[1])
     df = df.drop_duplicates(subset="base", keep="first")
-    strategies = df.head(5).index.tolist()
+    strategies = df.head(PORTFOLIO_NUM_STRATEGIES).index.tolist()
 
     display_portfolio_info(strategies, data)
 
