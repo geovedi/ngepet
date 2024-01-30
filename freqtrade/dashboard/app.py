@@ -173,8 +173,11 @@ def display_portfolio_comparison(data):
     for porto, column in mapping.items():
         df = data["stats"]
         df = df.sort_values(by=column, ascending=False)
+
+        # Evolver filter
         df["base"] = df.index.map(lambda x: x.split("_")[1])
         df = df.drop_duplicates(subset="base", keep="first")
+
         strategies = df.head(PORTFOLIO_NUM_STRATEGIES).index.tolist()
         df_dict[porto] = data["daily_profit"][strategies].cumsum(axis=0).sum(axis=1)
 
@@ -192,56 +195,82 @@ def display_profit_distribution(strategies, data):
     sns.histplot(df, bins=50)
     st.pyplot(fig, use_container_width=True)
 
+
 def run_montecarlo_simulation(strategies, data):
-    df = data["daily_profit"][strategies].cumsum()
-    df = (INITIAL_BALANCE + df).pct_change(axis=0)
+    def _calculate_statistics(df):
+        stats = pd.DataFrame()
+        stats["daily_returns"] = df.mean(axis=0)
+        stats["weights"] = 1 / len(df.columns)
+        return stats
 
-    portfolio_stats = pd.DataFrame()
-    portfolio_stats["daily_returns"] = df.mean(axis=0)
-    portfolio_stats["weights"] = 1 / len(df.columns)
-
-    covariance_matrix = df.cov()
-
-    simulations = 20
-    days = 90
-
-    portfolio = np.zeros((days, simulations))
-
-    historical_returns = np.full(
-        shape=(days, len(df.columns)), fill_value=portfolio_stats.daily_returns
-    )
-
-    L = np.linalg.cholesky(covariance_matrix)
-
-    for i in range(0, simulations):
-        Z = np.random.normal(size=(days, len(df.columns)))
-        daily_returns = historical_returns + np.dot(L, Z.T).T
-        portfolio[:, i] = (
-            np.cumprod(np.dot(daily_returns, portfolio_stats["weights"]) + 1)
-            * INITIAL_BALANCE
+    def _generate_portfolio(df, stats, n_iters, n_sims, init_balance):
+        covariance_matrix = df.cov()
+        L = np.linalg.cholesky(covariance_matrix)
+        historical_returns = np.full(
+            shape=(n_iters, len(df.columns)), fill_value=stats["daily_returns"]
         )
 
-    simulated_portfolio = pd.DataFrame(portfolio) - INITIAL_BALANCE
-    simulated_portfolio /= INITIAL_BALANCE
-    alpha = 5
+        portfolio = np.zeros((n_iters, n_sims))
+        for i in range(n_sims):
+            Z = np.random.normal(size=(n_iters, len(df.columns)))
+            daily_returns = historical_returns + np.dot(L, Z.T).T
+            portfolio[:, i] = (
+                np.cumprod(np.dot(daily_returns, stats["weights"]) + 1) * init_balance
+            )
+        return portfolio
 
-    def montecarlo_var(alpha):
-        sim_val = simulated_portfolio.iloc[-1, :]
-        return np.percentile(sim_val, alpha)
+    def _calculate_var(sim_portfolio, alpha=5):
+        sim_val = sim_portfolio.iloc[-1, :]
+        mc_var = np.percentile(sim_val, alpha)
+        return mc_var, sim_val[sim_val <= mc_var].mean()
 
-    def conditional_var(alpha):
-        sim_val = simulated_portfolio.iloc[-1, :]
-        return sim_val[sim_val <= montecarlo_var(alpha)].mean()
+    def _run_simulation(df, n_sims=50, n_iters=90, init_balance=INITIAL_BALANCE):
+        df_pct_change = (init_balance + df).pct_change(axis=0)
+        stats = _calculate_statistics(df_pct_change)
+        portfolio = _generate_portfolio(
+            df_pct_change, stats, n_iters, n_sims, init_balance
+        )
 
-    mc_var = montecarlo_var(alpha)
-    cond_var = conditional_var(alpha)
+        sim_portfolio = pd.DataFrame(portfolio)
+        mc_var, cond_var = _calculate_var(sim_portfolio)
+        sim_portfolio["MC Var"] = mc_var
+        sim_portfolio["Cond Var"] = cond_var
+        return sim_portfolio
 
-    mc_columns = simulated_portfolio.columns
-    simulated_portfolio.loc[slice(None), "Montecarlo Var"] = mc_var
-    simulated_portfolio.loc[slice(None), "Conditional Var"] = cond_var
+    df = data["daily_profit"][strategies].cumsum()
 
-    st.subheader(f"Montecarlo Simulation (Next {days} Days)")
-    st.line_chart(simulated_portfolio, use_container_width=True)
+    # Simulation Prediction
+    days_pred = 90
+    sim_pred = _run_simulation(df, n_iters=days_pred)
+    sim_pred = (sim_pred - INITIAL_BALANCE) / INITIAL_BALANCE
+
+    # Simulation Validation
+    cutoff = 0.6
+    idx_cutoff = int(len(df.index) * cutoff)
+    df_subset = df.iloc[:idx_cutoff]
+    days_cutoff = len(df.index) - idx_cutoff
+    cutoff_balance = df_subset.iloc[-1].sum()
+    sim_valid = _run_simulation(
+        df_subset, n_iters=days_cutoff, init_balance=cutoff_balance
+    )
+    sim_valid.index = df.iloc[idx_cutoff:].index
+
+    merged = pd.DataFrame()
+    merged["Portfolio"] = df.sum(axis=1)
+    # sim_valid *= cutoff_balance
+    # sim_valid += cutoff_balance
+    merged[sim_valid.columns] = sim_valid
+    merged.iloc[idx_cutoff] = merged.iloc[idx_cutoff]["Portfolio"]
+    merged["MC Var"] = merged.iloc[-1]["MC Var"]
+    merged["Cond Var"] = merged.iloc[-1]["Cond Var"]
+    merged = (merged - INITIAL_BALANCE) / INITIAL_BALANCE
+
+    st.subheader(f"Montecarlo Simulation (D+{days_pred})")
+    st.line_chart(sim_pred, use_container_width=True)
+
+    st.subheader(f"Montecarlo Validation (D-{days_cutoff})")
+    st.line_chart(merged, use_container_width=True)
+
 
 def display_portfolio_info(strategies, data):
     display_statistics(strategies, data)
@@ -250,6 +279,7 @@ def display_portfolio_info(strategies, data):
     run_montecarlo_simulation(strategies, data)
     display_profit_distribution(strategies, data)
     display_open_trades(strategies, data)
+
 
 # Page Functions
 def default_page(data):
@@ -280,11 +310,14 @@ def ratio_driven_page(title, ratio_column, data):
 
     df = data["stats"]
     df = df.sort_values(by=ratio_column, ascending=False)
+    # Evolver filter
     df["base"] = df.index.map(lambda x: x.split("_")[1])
     df = df.drop_duplicates(subset="base", keep="first")
+
     strategies = df.head(PORTFOLIO_NUM_STRATEGIES).index.tolist()
 
     display_portfolio_info(strategies, data)
+
 
 # Main Application
 data = load_data(DATA_DIR)
