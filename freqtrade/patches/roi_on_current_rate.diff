@@ -1,0 +1,14 @@
+diff --git a/freqtrade/strategy/interface.py b/freqtrade/strategy/interface.py
+index bd846eb90..83f53d330 100644
+--- a/freqtrade/strategy/interface.py
++++ b/freqtrade/strategy/interface.py
+@@ -1104,7 +1104,8 @@ class IStrategy(ABC, HyperStrategyMixin):
+         current_rate = rate
+         current_profit = trade.calc_profit_ratio(current_rate)
+         current_profit_best = current_profit
+-        if low is not None or high is not None:
++        roi_on_current_rate = self.config["internals"].get("roi_on_current_rate")
++        if (low is not None or high is not None) and not roi_on_current_rate:
+             # Set current rate to high for backtesting ROI exits
+             current_rate_best = (low if trade.is_short else high) or rate
+             current_profit_best = trade.calc_profit_ratio(current_rate_best)
