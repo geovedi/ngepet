@@ -1,0 +1,12 @@
+index d38110a2a..626d60b81 100644
+--- a/freqtrade/strategy/hyper.py
++++ b/freqtrade/strategy/hyper.py
+@@ -31,7 +31,7 @@ class HyperStrategyMixin:
+         self.ft_sell_params: List[BaseParameter] = []
+         self.ft_protection_params: List[BaseParameter] = []
+
+-        params = self.load_params_from_file()
++        params = self.load_params_from_file() or config
+         params = params.get('params', {})
+         self._ft_params_from_file = params
+         # Init/loading of parameters is done as part of ft_bot_start().
