@@ -1,0 +1,20 @@
+diff --git a/freqtrade/freqtradebot.py b/freqtrade/freqtradebot.py
+index 0d7cef827..b05612bf4 100644
+--- a/freqtrade/freqtradebot.py
++++ b/freqtrade/freqtradebot.py
+@@ -207,6 +207,16 @@ class FreqtradeBot(LoggingMixin):
+         :return: True if one or more trades has been created or closed, False otherwise
+         """
+
++        # HACK
++        if self.last_process and self.config["internals"].get("process_only_on_new_candle"):
++            next_date = timeframe_to_next_date(self.strategy.timeframe, self.last_process)
++            now = datetime.now(timezone.utc)
++            logger.debug(
++                "last_process: {}, next_date: {}".format(self.last_process, next_date)
++            )
++            if next_date > now:
++                return
++
+         # Check whether markets have to be reloaded and reload them when it's needed
+         self.exchange.reload_markets()
