@@ -60,8 +60,8 @@ class CustomLoss(IHyperOptLoss):
             max_drawdown_abs = calculate_max_drawdown(
                 chunk,
                 value_col="profit_abs",
-                starting_balance=starting_balance,
-                relative=True,
+                # starting_balance=starting_balance,
+                # relative=True,
             )[0]
             exp, exp_ratio = calculate_expectancy(chunk)
             system_quality = calculate_system_quality(chunk)
@@ -71,6 +71,6 @@ class CustomLoss(IHyperOptLoss):
                 exp_ratio * profit_ratio * system_quality * return_over_max_drawdown
             )
             scores.append(np.nan_to_num(score, nan=0.0, posinf=0.0, neginf=0.0))
-            starting_balance += total_profit_abs
+            # starting_balance += total_profit_abs
 
         return -np.percentile(scores, MIN_PERCENTILE) if scores else MAX_LOSS
