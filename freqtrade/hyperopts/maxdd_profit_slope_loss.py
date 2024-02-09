@@ -6,6 +6,7 @@ from freqtrade.constants import Config
 
 MIN_TRADES = 500
 MIN_TOTAL_PROFIT = 50000.0
+MAX_LOSS = 100000
 
 
 class MaxDrawdownProfitSlopeLoss(IHyperOptLoss):
@@ -44,7 +45,7 @@ class MaxDrawdownProfitSlopeLoss(IHyperOptLoss):
         # Early exit with a high loss score if trade count or total profit
         # criteria are not met
         if trade_count < MIN_TRADES or profits.iloc[-1] < MIN_TOTAL_PROFIT:
-            return 9999.0
+            return MAX_LOSS
 
         # Number of Monte Carlo simulations
         num_simulations = 1000
@@ -87,7 +88,7 @@ class MaxDrawdownProfitSlopeLoss(IHyperOptLoss):
 
         # Check if profit and drawdown criteria are met based on Monte Carlo simulations
         if profit_lower < 0.5 * profits.iloc[-1] or max_dd_upper > 2.0 * max_dd:
-            return 9999.0
+            return MAX_LOSS
 
         # Generate a trendline for profit slope calculation
         trendline = np.linspace(profits.iloc[0], profits.iloc[-1], trade_count)
