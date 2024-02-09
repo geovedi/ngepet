@@ -50,7 +50,7 @@ class CustomLoss(IHyperOptLoss):
             return MAX_LOSS
 
         num_chunks = len(results) // CHUNK_SIZE
-        truncated_results = results.iloc[-num_chunks * CHUNK_SIZE :]
+        truncated_results = results.iloc[:num_chunks * CHUNK_SIZE]
 
         scores = []
 
@@ -71,5 +71,6 @@ class CustomLoss(IHyperOptLoss):
                 exp_ratio * profit_ratio * system_quality * return_over_max_drawdown
             )
             scores.append(np.nan_to_num(score, nan=0.0, posinf=0.0, neginf=0.0))
+            starting_balance += total_profit_abs
 
         return -np.percentile(scores, MIN_PERCENTILE) if scores else MAX_LOSS
