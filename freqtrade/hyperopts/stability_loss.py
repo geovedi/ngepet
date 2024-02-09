@@ -2,6 +2,8 @@ import numpy as np
 from pandas import DataFrame
 from freqtrade.optimize.hyperopt import IHyperOptLoss
 
+MAX_LOSS = 100000
+
 class StabilityLoss(IHyperOptLoss):
 
     @staticmethod
@@ -12,4 +14,4 @@ class StabilityLoss(IHyperOptLoss):
         similarity = np.corrcoef(returns, trendline)[0, 1]
         stability = similarity ** 2
 
-        return 9999.0 if returns.iloc[-1] <= 0 else -stability
+        return MAX_LOSS if returns.iloc[-1] <= 0 else -stability
