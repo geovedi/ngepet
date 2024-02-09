@@ -9,6 +9,7 @@ from freqtrade.optimize.hyperopt import IHyperOptLoss
 MAX_LOSS = 100000
 CHUNK_SIZE = 100
 MAX_DRAWDOWN = 0.5
+MIN_PERCENTILE = 5
 
 def calculate_system_quality(trades: pd.DataFrame) -> float:
     return (
@@ -71,4 +72,4 @@ class CustomLoss(IHyperOptLoss):
             )
             scores.append(np.nan_to_num(score, nan=0.0, posinf=0.0, neginf=0.0))
 
-        return -np.percentile(scores, 5) if scores else MAX_LOSS
+        return -np.percentile(scores, MIN_PERCENTILE) if scores else MAX_LOSS
