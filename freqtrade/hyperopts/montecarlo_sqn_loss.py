@@ -11,6 +11,7 @@ QUANTILE = 0.1
 CHUNK_SIZE = 100
 MAX_DRAWDOWN = 0.3
 MIN_SQN = 2.0
+MAX_LOSS = 100000
 
 np.random.seed(1337)
 
@@ -31,7 +32,7 @@ class MontecarloSQNLoss(IHyperOptLoss):
             or dd >= MAX_DRAWDOWN
             or sqn <= MIN_SQN
         ):
-            return 100000
+            return MAX_LOSS
 
         return -mc_profit_ratio
 
