@@ -23,7 +23,7 @@ class MedianReturnOverMaxDrawdownLoss(IHyperOptLoss):
                 break
 
             # Filter results for the current 3-month chunk
-            chunk = results[(results.index >= start_date) & (results.index < end_date)]
+            chunk = results.loc[start_date:end_date]
 
             if not chunk.empty:
                 total_profit = chunk["profit_abs"].sum()
