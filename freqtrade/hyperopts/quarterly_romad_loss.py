@@ -5,7 +5,7 @@ from freqtrade.optimize.hyperopt import IHyperOptLoss
 from freqtrade.data.metrics import calculate_max_drawdown
 
 MAX_LOSS = 100000
-MIN_PERCENTILE = 5
+MIN_PERCENTILE = 20
 
 
 class BaseReturnOverMaxDrawdownLoss(IHyperOptLoss):
