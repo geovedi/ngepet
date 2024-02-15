@@ -97,7 +97,4 @@ class MaxDrawdownProfitSlopeLoss(IHyperOptLoss):
         slope = np.polyfit(trendline, profits, 1)[0]
 
         # Calculate the final score using a combination of slope, profit, and max drawdown
-        final_score = np.round(
-            -1.0 * slope * np.log(trade_count) * np.log(profits.iloc[-1] / max_dd), 5
-        )
-        return final_score
+        return -1.0 * slope * np.log(trade_count) * np.log(profits.iloc[-1] / max_dd)
