@@ -9,7 +9,7 @@ class StabilityLoss(IHyperOptLoss):
     @staticmethod
     def hyperopt_loss_function(results: DataFrame, trade_count: int,
                                *args, **kwargs) -> float:
-        returns = results['profit_abs'].cumsum()
+        returns = results['profit_ratio'].cumsum()
         trendline = np.linspace(returns.iloc[0], returns.iloc[-1], trade_count)
         similarity = np.corrcoef(returns, trendline)[0, 1]
         stability = similarity ** 2
