@@ -1,5 +1,5 @@
 import numpy as np
-from pandas import DataFrame
+from pandas import DataFrame, date_range
 from freqtrade.optimize.hyperopt import IHyperOptLoss
 from sklearn.metrics.pairwise import euclidean_distances
 from datetime import datetime
