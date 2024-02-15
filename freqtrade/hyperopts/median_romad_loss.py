@@ -1,7 +1,6 @@
 import numpy as np
-import pandas as pd
 from datetime import datetime
-from pandas import DataFrame
+from pandas import DataFrame, DateOffset, date_range
 from freqtrade.optimize.hyperopt import IHyperOptLoss
 from freqtrade.data.metrics import calculate_max_drawdown
 
@@ -15,10 +14,10 @@ class MedianReturnOverMaxDrawdownLoss(IHyperOptLoss):
                                *args, **kwargs) -> float:
         scores = []
 
-        start_dates = pd.date_range(start=min_date, end=max_date, freq='MS')
+        start_dates = date_range(start=min_date, end=max_date, freq='MS')
 
         for start_date in start_dates:
-            end_date = start_date + pd.DateOffset(months=3)
+            end_date = start_date + DateOffset(months=3)
             if end_date > max_date:
                 break
 
