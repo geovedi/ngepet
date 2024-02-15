@@ -5,12 +5,17 @@ from freqtrade.optimize.hyperopt import IHyperOptLoss
 from freqtrade.data.metrics import calculate_max_drawdown
 
 MAX_LOSS = 100000
+MIN_PERCENTILE = 5
 
 
-class MedianReturnOverMaxDrawdownLoss(IHyperOptLoss):
+class BaseReturnOverMaxDrawdownLoss(IHyperOptLoss):
     @staticmethod
+    def calculate_loss(scores):
+        raise NotImplementedError("This method should be overridden by subclasses")
+
+    @classmethod
     def hyperopt_loss_function(
-        results: DataFrame, min_date: datetime, max_date: datetime, *args, **kwargs
+        cls, results: DataFrame, min_date: datetime, max_date: datetime, *args, **kwargs
     ) -> float:
         scores = []
 
@@ -31,8 +36,22 @@ class MedianReturnOverMaxDrawdownLoss(IHyperOptLoss):
                     max_drawdown = calculate_max_drawdown(
                         chunk, value_col="profit_abs"
                     )[0]
-                    scores.append(total_profit / max_drawdown)
+                    scores.append(
+                        total_profit / max_drawdown if max_drawdown else total_profit
+                    )
                 except Exception:
                     scores.append(total_profit)
 
-        return -np.median(scores) if scores else MAX_LOSS
+        return cls.calculate_loss(scores) if scores else MAX_LOSS
+
+
+class MedianReturnOverMaxDrawdownLoss(BaseReturnOverMaxDrawdownLoss):
+    @staticmethod
+    def calculate_loss(scores):
+        return -np.median(scores)
+
+
+class MinPercentileReturnOverMaxDrawdownLoss(BaseReturnOverMaxDrawdownLoss):
+    @staticmethod
+    def calculate_loss(scores):
+        return -np.percentile(scores, MIN_PERCENTILE)
