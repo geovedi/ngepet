@@ -1,0 +1,25 @@
+diff --git a/freqtrade/optimize/backtesting.py b/freqtrade/optimize/backtesting.py
+index 493c7567f..8be342dba 100644
+--- a/freqtrade/optimize/backtesting.py
++++ b/freqtrade/optimize/backtesting.py
+@@ -23,7 +23,7 @@ from freqtrade.enums import (BacktestState, CandleType, ExitCheckTuple, ExitType
+                              TradingMode)
+ from freqtrade.exceptions import DependencyException, OperationalException
+ from freqtrade.exchange import (amount_to_contract_precision, price_to_precision,
+-                                timeframe_to_seconds)
++                                timeframe_to_seconds, timeframe_to_prev_date)
+ from freqtrade.exchange.exchange import Exchange
+ from freqtrade.mixins import LoggingMixin
+ from freqtrade.optimize.backtest_caching import get_strategy_run_id
+@@ -1220,6 +1220,11 @@ class Backtesting:
+             (end_date - start_date) / self.timeframe_td))
+         # Loop timerange and get candle for each pair at that point in time
+         while current_time <= end_date:
++            prev_candle_time = timeframe_to_prev_date(self.timeframe, current_time)
++            if (current_time - prev_candle_time) >= timedelta(minutes=1):
++                current_time += self.timeframe_td
++                continue
++
+             open_trade_count_start = LocalTrade.bt_open_open_trade_count
+             self.check_abort()
+             strategy_safe_wrapper(self.strategy.bot_loop_start, supress_error=True)(
