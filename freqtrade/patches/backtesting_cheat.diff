@@ -1,5 +1,5 @@
 diff --git a/freqtrade/optimize/backtesting.py b/freqtrade/optimize/backtesting.py
-index 493c7567f..8be342dba 100644
+index 493c7567f..788bae968 100644
 --- a/freqtrade/optimize/backtesting.py
 +++ b/freqtrade/optimize/backtesting.py
 @@ -23,7 +23,7 @@ from freqtrade.enums import (BacktestState, CandleType, ExitCheckTuple, ExitType
@@ -11,7 +11,19 @@ index 493c7567f..8be342dba 100644
  from freqtrade.exchange.exchange import Exchange
  from freqtrade.mixins import LoggingMixin
  from freqtrade.optimize.backtest_caching import get_strategy_run_id
-@@ -1220,6 +1220,11 @@ class Backtesting:
+@@ -629,10 +629,7 @@ class Backtesting:
+             exit_reason = exit_.exit_reason
+             amount_ = amount if amount is not None else trade.amount
+             trade_dur = int((trade.close_date_utc - trade.open_date_utc).total_seconds() // 60)
+-            try:
+-                close_rate = self._get_close_rate(row, trade, exit_, trade_dur)
+-            except ValueError:
+-                return None
++            close_rate = row[OPEN_IDX]
+             # call the custom exit price,with default value as previous close_rate
+             current_profit = trade.calc_profit_ratio(close_rate)
+             order_type = self.strategy.order_types['exit']
+@@ -1220,6 +1217,11 @@ class Backtesting:
              (end_date - start_date) / self.timeframe_td))
          # Loop timerange and get candle for each pair at that point in time
          while current_time <= end_date:
