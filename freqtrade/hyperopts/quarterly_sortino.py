@@ -54,7 +54,7 @@ class QuarterlySortinoLoss(IHyperOptLoss):
 
             if not chunk.empty:
                 daily_profit = (
-                    trades_in_period.resample("1D", on="close_date")
+                    chunk.resample("1D", on="close_date")
                     .agg({"profit_ratio_after_slippage": "sum"})
                     .reindex(
                         date_range(
