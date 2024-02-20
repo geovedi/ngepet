@@ -1,7 +1,8 @@
-import numpy as np
 from datetime import datetime, timedelta
-from freqtrade.strategy import CategoricalParameter, IStrategy
+
+import numpy as np
 from freqtrade.exchange import timeframe_to_prev_date
+from freqtrade.strategy import CategoricalParameter, IStrategy
 
 
 class StrategyWithCustomROI(IStrategy):
