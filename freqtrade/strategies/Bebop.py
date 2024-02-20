@@ -19,7 +19,7 @@ is_rising = lambda s, n: (s.diff() > 0).rolling(n).sum() == n
 is_falling = lambda s, n: (s.diff() < 0).rolling(n).sum() == n
 
 
-class TryEverything(IStrategy):
+class Bebop(IStrategy):
     INTERFACE_VERSION = 3
     RULES_SIZE = 2
     minimal_roi = {}
