@@ -58,8 +58,8 @@ class QuarterlySortinoLoss(IHyperOptLoss):
                     .agg({"profit_ratio_after_slippage": "sum"})
                     .reindex(
                         date_range(
-                            start=period_start,
-                            end=period_end,
+                            start=start_date,
+                            end=end_date,
                             freq="1D",
                             normalize=True,
                         ),
