@@ -30,7 +30,7 @@ class StrategyWithCustomROI(IStrategy):
         self,
         pair: str,
         trade: "Trade",
-        current_time: "datetime",
+        current_time: datetime,
         current_rate: float,
         current_profit: float,
         **kwargs,
