@@ -7,16 +7,17 @@ from freqtrade.strategy import CategoricalParameter, IStrategy
 
 class StrategyWithCustomROI(IStrategy):
     # ...
-    roi_days = CategoricalParameter(range(3, 14), default=7, space="sell")
+    roi_day = CategoricalParameter(range(3, 15, 2), default=13, space="sell")
+    roi_gap = CategoricalParameter(range(1, 8), default=4, space="sell")
     roi_max = CategoricalParameter(
-        np.arange(0.2, 1.0, 0.05).round(2), default=0.45, space="sell"
+        np.arange(0.2, 0.55, 0.05).round(2), default=0.25, space="sell"
     )
 
     @property
     def custom_roi(self):
-        d = self.roi_days.value
+        d = self.roi_day.value
         r = self.roi_max.value
-        n = 2  # gap day
+        n = self.roi_gap.value
         roi = [(d, -1.0)] + list(
             zip(reversed(range(1, d, n)), np.linspace(0, r, d // n).round(3))
         )
