@@ -1,0 +1,14 @@
+diff --git a/freqtrade/optimize/hyperopt.py b/freqtrade/optimize/hyperopt.py
+index 5d5d15b03..319a5faa2 100644
+--- a/freqtrade/optimize/hyperopt.py
++++ b/freqtrade/optimize/hyperopt.py
+@@ -575,7 +575,9 @@ class Hyperopt:
+             colorama_init(autoreset=True)
+
+         try:
+-            with Parallel(n_jobs=config_jobs) as parallel:
++            batch_size = ceil(config_jobs * (config_jobs - 1) / 2 / cpu_count()) if config_jobs != -1 else 1
++            pre_dispatch = "all"
++            with Parallel(n_jobs=config_jobs, batch_size=batch_size, pre_dispatch=pre_dispatch) as parallel:
+                 jobs = parallel._effective_n_jobs()
+                 logger.info(f'Effective number of parallel workers used: {jobs}')
