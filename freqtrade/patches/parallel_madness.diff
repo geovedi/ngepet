@@ -7,7 +7,7 @@ index 5d5d15b03..319a5faa2 100644
 
          try:
 -            with Parallel(n_jobs=config_jobs) as parallel:
-+            batch_size = ceil(config_jobs * (config_jobs - 1) / 2 / cpu_count()) if config_jobs != -1 else 1
++            batch_size = ceil(config_jobs * (config_jobs - 1) / 2 / cpu_count()) if config_jobs != -1 else "auto"
 +            pre_dispatch = "all"
 +            with Parallel(n_jobs=config_jobs, batch_size=batch_size, pre_dispatch=pre_dispatch) as parallel:
                  jobs = parallel._effective_n_jobs()
