@@ -47,9 +47,9 @@ class StrategyWithARewardRiskRatio(IStrategy):
         stop_loss_value = self.stop_loss_ratio.value
         take_profit_value = stop_loss_value * self.reward_risk_ratio.value
 
-        side = 1 if trade.is_short else -1
-        stop_loss_rate = trade.open_rate + (atr * stop_loss_value * side)
-        take_profit_rate = trade.open_rate - (atr * take_profit_value * side)
+        side = -1 if trade.is_short else 1
+        stop_loss_rate = trade.open_rate - (atr * stop_loss_value * side)
+        take_profit_rate = trade.open_rate + (atr * take_profit_value * side)
 
         if current_rate >= take_profit_rate:
             return "take_profit"
