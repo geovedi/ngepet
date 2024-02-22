@@ -1,3 +1,5 @@
+# WARNING: This code is experimental and not known to be profitable!
+
 import numpy as np
 from freqtrade.strategy import CategoricalParameter, IStrategy
 
