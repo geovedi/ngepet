@@ -4,7 +4,7 @@ from freqtrade.strategy import CategoricalParameter, IStrategy
 # from freqtrade.exchange import timeframe_to_prev_date
 
 
-class StrategyWithRewardRiskRatio(IStrategy):
+class StrategyWithARewardRiskRatio(IStrategy):
     # ...
     reward_risk_ratio = CategoricalParameter(
         np.arange(1.0, 20.25, 0.25).round(2), default=3.0, space="sell"
