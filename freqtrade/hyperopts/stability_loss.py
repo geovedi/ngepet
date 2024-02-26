@@ -1,22 +1,20 @@
 import numpy as np
-from pandas import DataFrame, date_range
-from freqtrade.optimize.hyperopt import IHyperOptLoss
+
 from datetime import datetime
+from pandas import DataFrame, date_range
+from freqtrade.constants import Config
+from freqtrade.optimize.hyperopt import IHyperOptLoss
 
 MAX_LOSS = 100000
 RESAMPLE_FREQ = '1D'
 SLIPPAGE_PER_TRADE_RATIO = 0.0005
+DAYS_IN_YEAR = 365
 MIN_ANNUAL_GROWTH_COEF = 1.0
+
 
 def cosine_similarity(A, B):
     """
     Calculates the cosine similarity between two time-series datasets A and B.
-    
-    Parameters:
-    - A, B (np.array): Input time-series datasets.
-    
-    Returns:
-    - cosine_sim (float): The cosine similarity between A and B.
     """
     # Normalize the datasets
     A_norm = (A - np.mean(A)) / np.std(A)
