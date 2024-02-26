@@ -37,9 +37,6 @@ class StrategyWithATRTrailingStop(IStrategy):
         current_profit: float,
         **kwargs,
     ):
-        if not self._is_fresh_candle(current_time):
-            return None
-
         trade_dur = (current_time - trade.open_date_utc).days
         if trade_dur >= self.max_trade_day.value:
             return "expired"
