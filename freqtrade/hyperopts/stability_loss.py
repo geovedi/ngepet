@@ -49,12 +49,12 @@ class StabilityLoss(IHyperOptLoss):
 
         # Calculate cumulative returns and generate a linear trendline for comparison.
         returns = sum_daily['profit_ratio_after_slippage'].cumsum()
-        trendline = np.linspace(returns[0], returns[-1], len(returns))
+        trendline = np.linspace(returns.iloc[0], returns.iloc[-1], len(returns))
 
         # Compute the distance between the returns and the trendline.
         distance = np.linalg.norm(trendline - returns)
         # Convert distance to similarity scores, with smaller distances indicating higher similarity.
-        similarity = 1 / (distance + 1) * np.log(returns.iloc[-1])
+        score = 1 / (distance + 1) * np.sqrt(returns.iloc[-1])
 
         # Penalize strategies that result in a net loss over the period, otherwise return the negative stability.
-        return MAX_LOSS if similarity <= 0 else -stability
+        return MAX_LOSS if score <= 0 else -score
