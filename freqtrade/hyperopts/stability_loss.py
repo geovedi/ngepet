@@ -4,6 +4,8 @@ from freqtrade.optimize.hyperopt import IHyperOptLoss
 from datetime import datetime
 
 MAX_LOSS = 100000  # Define a fallback maximum loss value for non-ideal scenarios.
+RESAMPLE_FREQ = '1D'
+SLIPPAGE_PER_TRADE_RATIO = 0.0005
 
 class StabilityLoss(IHyperOptLoss):
     """
@@ -37,13 +39,10 @@ class StabilityLoss(IHyperOptLoss):
         - float: Calculated loss, with a higher (less negative) value indicating a
                  strategy that deviates more from stable, linear growth.
         """
-
         # Adjust profit ratios for slippage and resample to daily sums.
-        resample_freq = '1D'
-        slippage_per_trade_ratio = 0.0005
-        results['profit_ratio_after_slippage'] = results['profit_ratio'] - slippage_per_trade_ratio
-        t_index = date_range(start=min_date, end=max_date, freq=resample_freq, normalize=True)
-        sum_daily = results.resample(resample_freq, on='close_date').agg(
+        results['profit_ratio_after_slippage'] = results['profit_ratio'] - SLIPPAGE_PER_TRADE_RATIO
+        t_index = date_range(start=min_date, end=max_date, freq=RESAMPLE_FREQ, normalize=True)
+        sum_daily = results.resample(RESAMPLE_FREQ, on='close_date').agg(
             {"profit_ratio_after_slippage": 'sum'}
         ).reindex(t_index).fillna(0)
 
@@ -54,7 +53,7 @@ class StabilityLoss(IHyperOptLoss):
         # Compute the distance between the returns and the trendline.
         distance = np.linalg.norm(trendline - returns)
         # Convert distance to similarity scores, with smaller distances indicating higher similarity.
-        score = 1 / (distance + 1) * np.sqrt(returns.iloc[-1])
+        score = 1 / (distance + 1) * np.log(returns.iloc[-1])
 
         # Penalize strategies that result in a net loss over the period, otherwise return the negative stability.
-        return MAX_LOSS if score <= 0 else -score
+        return MAX_LOSS if returns.iloc[-1] <= 0 else -score
