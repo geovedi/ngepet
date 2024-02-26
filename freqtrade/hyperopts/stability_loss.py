@@ -48,8 +48,8 @@ class StabilityLoss(IHyperOptLoss):
         ).reindex(t_index).fillna(0)
 
         # Calculate cumulative returns and generate a linear trendline for comparison.
-        returns = sum_daily['profit_ratio_after_slippage'].cumsum().to_numpy().reshape(-1, 1)
-        trendline = np.linspace(returns[0], returns[-1], len(returns)).reshape(-1, 1)
+        returns = sum_daily['profit_ratio_after_slippage'].cumsum()
+        trendline = np.linspace(returns[0], returns[-1], len(returns))
 
         # Compute the distance between the returns and the trendline.
         distance = np.linalg.norm(trendline - returns)
