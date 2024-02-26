@@ -34,7 +34,7 @@ class StrategyWithARewardRiskRatio(IStrategy):
         current_candle = dataframe.iloc[-1].squeeze()
         current_rate = current_candle["close"]
 
-        # -- faster method; EMA-ATR should give a reasonable true range.
+        # -- faster method; EMA-ATR should give a relatively stable true range.
         atr = current_candle["atr"]
 
         # -- slower method; need to import timeframe_to_prev_date
