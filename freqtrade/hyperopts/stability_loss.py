@@ -6,7 +6,7 @@ from datetime import datetime
 MAX_LOSS = 100000
 RESAMPLE_FREQ = '1D'
 SLIPPAGE_PER_TRADE_RATIO = 0.0005
-
+MIN_ANNUAL_GROWTH_COEF = 1.0
 
 def cosine_similarity(A, B):
     """
@@ -40,9 +40,16 @@ class StabilityLoss(IHyperOptLoss):
     """
 
     @staticmethod
-    def hyperopt_loss_function(results: DataFrame, trade_count: int,
+    def hyperopt_loss_function(results: DataFrame, trade_count: int, config: Config,
                                min_date: datetime, max_date: datetime,
                                *args, **kwargs) -> float:
+        starting_balance = config["dry_run_wallet"]
+        total_profit_abs = results["profit_abs"].sum()
+        backtest_days = (max_date - min_date).days or 1
+        years = max(1, backtest_days // DAYS_IN_YEAR)
+
+        if total_profit_abs < starting_balance * years * MIN_ANNUAL_GROWTH_COEF:
+            return MAX_LOSS
 
         # Adjust profits for slippage and resample to daily
         results['profit_ratio_after_slippage'] = results['profit_ratio'] - SLIPPAGE_PER_TRADE_RATIO
