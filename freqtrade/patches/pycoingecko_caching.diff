@@ -1,17 +1,21 @@
 --- api.py.orig 2024-02-26 04:01:29.683394118 +0000
-+++ api.py      2024-02-26 04:03:13.471642225 +0000
-@@ -1,5 +1,6 @@
++++ api.py      2024-02-26 04:11:52.308876138 +0000
+@@ -1,6 +1,8 @@
  import json
  import requests
 +import requests_cache
 
++from datetime import timedelta
  from requests.adapters import HTTPAdapter
  from requests.packages.urllib3.util.retry import Retry
-@@ -19,7 +20,7 @@
+
+@@ -19,7 +21,9 @@
              self.api_base_url = self.__API_URL_BASE
          self.request_timeout = 120
 
 -        self.session = requests.Session()
-+        self.session = requests_cache.CachedSession('coingecko', backend='sqlite', use_temp=True)
++        self.session = requests_cache.CachedSession('coingecko', backend='sqlite',
++                                                    expire_after=timedelta(hours=1),
++                                                    use_temp=True)
          retries = Retry(total=retries, backoff_factor=0.5, status_forcelist=[502, 503, 504])
          self.session.mount('https://', HTTPAdapter(max_retries=retries))
