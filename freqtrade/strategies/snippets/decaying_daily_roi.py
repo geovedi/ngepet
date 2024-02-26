@@ -5,7 +5,7 @@ from freqtrade.exchange import timeframe_to_prev_date
 from freqtrade.strategy import CategoricalParameter, IStrategy
 
 
-class StrategyWithCustomROI(IStrategy):
+class StrategyWithDecayingDailyROI(IStrategy):
     # ...
     roi_day = CategoricalParameter(range(3, 15, 2), default=13, space="sell")
     roi_gap = CategoricalParameter(range(1, 8), default=4, space="sell")
