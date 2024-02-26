@@ -57,7 +57,7 @@ class StabilityLoss(IHyperOptLoss):
 
         # Compute cosine similarity with the trendline
         similarity = cosine_similarity(trendline, returns)
-        score = returns.iloc[-1] * similarity
+        score = np.log(returns.iloc[-1]) * similarity
 
         # Apply penalty for net losses, otherwise return negative stability score
         return MAX_LOSS if returns.iloc[-1] <= 0 else -score
