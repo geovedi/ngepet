@@ -1,7 +1,6 @@
 import numpy as np
 from pandas import DataFrame, date_range
 from freqtrade.optimize.hyperopt import IHyperOptLoss
-from sklearn.metrics.pairwise import euclidean_distances
 from datetime import datetime
 
 MAX_LOSS = 100000  # Define a fallback maximum loss value for non-ideal scenarios.
@@ -10,8 +9,8 @@ class StabilityLoss(IHyperOptLoss):
     """
     Custom loss function that evaluates the stability of a trading strategy by comparing
     the equity curve's similarity to a linear trendline. This is achieved by calculating
-    the Euclidean distance between the cumulative returns (after adjusting for slippage)
-    and a linear trendline spanning from the start to the end of the trading period.
+    the distance between the cumulative returns (after adjusting for slippage) and 
+    a linear trendline spanning from the start to the end of the trading period.
 
     The aim is to favor strategies that produce stable and consistent returns over time,
     penalizing those that deviate significantly from a steady growth path.
@@ -52,12 +51,10 @@ class StabilityLoss(IHyperOptLoss):
         returns = sum_daily['profit_ratio_after_slippage'].cumsum().to_numpy().reshape(-1, 1)
         trendline = np.linspace(returns[0], returns[-1], len(returns)).reshape(-1, 1)
 
-        # Compute the Euclidean distance between the returns and the trendline.
-        distance = euclidean_distances(returns, trendline).diagonal()
+        # Compute the distance between the returns and the trendline.
+        distance = np.linalg.norm(trendline - returns)
         # Convert distance to similarity scores, with smaller distances indicating higher similarity.
         similarity = 1 / (distance + 1)
-        # Calculate the average similarity as a measure of stability.
-        stability = np.mean(similarity)
 
         # Penalize strategies that result in a net loss over the period, otherwise return the negative stability.
         return MAX_LOSS if returns[-1] <= 0 else -stability
