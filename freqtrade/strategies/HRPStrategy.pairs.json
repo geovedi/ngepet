@@ -1,0 +1,28 @@
+{
+  "stake_currency": "BTC",
+  "dry_run_wallet": 0.2,
+  "exchange": {
+    "pair_whitelist": [
+      "PIVX/BTC",
+      "STORJ/BTC",
+      "ZEN/BTC",
+      "XRP/BTC",
+      "ETC/BTC",
+      "IOTA/BTC",
+      "WAVES/BTC",
+      "ZRX/BTC",
+      "MTL/BTC",
+      "NULS/BTC",
+      "EOS/BTC",
+      "RLC/BTC",
+      "LSK/BTC",
+      "LTC/BTC",
+      "ZEC/BTC",
+      "KNC/BTC",
+      "DASH/BTC",
+      "BNT/BTC",
+      "ETH/BTC",
+      "LINK/BTC"
+    ]
+  }
+}
