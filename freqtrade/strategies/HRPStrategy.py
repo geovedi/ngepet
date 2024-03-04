@@ -6,7 +6,7 @@ import numpy as np
 import riskfolio as rp
 import talib.abstract as ta
 from freqtrade.constants import Config
-from freqtrade.exchange import timeframe_to_minutes
+from freqtrade.exchange import timeframe_to_minutes, timeframe_to_prev_date
 from freqtrade.optimize.space import Categorical, Dimension, SKDecimal
 from freqtrade.persistence import Trade
 from freqtrade.strategy import CategoricalParameter, IntParameter, IStrategy
@@ -28,7 +28,7 @@ class HRPStrategy(IStrategy):
     can_short: bool = False
     process_only_new_candles: bool = False
     use_exit_signal: bool = False
-    ignore_buying_expired_candle_after: int = 3600
+    ignore_buying_expired_candle_after: int = 600
     position_adjustment_enable: bool = True
 
     minimal_roi: Dict[str, float] = {}
@@ -39,8 +39,8 @@ class HRPStrategy(IStrategy):
     trailing_only_offset_is_reached: bool = True
 
     entry_dayofweek = IntParameter(0, 6, default=0, space="buy")
-    rebalance_candle = CategoricalParameter(range(10, 360, 10), default=10, space="buy")
-    history_length = CategoricalParameter(range(50, 1050, 50), default=100, space="buy")
+    rebalance_candle = CategoricalParameter(range(50, 351, 50), default=100, space="buy")
+    history_length = CategoricalParameter(range(100, 501, 100), default=200, space="buy")
     risk_measure = CategoricalParameter(RISK_MEASURES, default="MV", space="buy", optimize=False)
 
     def __init__(self, config: Config) -> None:
@@ -79,7 +79,10 @@ class HRPStrategy(IStrategy):
 
     @property
     def selected_pairs(self):
-        return set([getattr(self, f"pair_{i:02d}").value for i in range(self.max_open_trades)])
+        pairs = [getattr(self, f"pair_{i:02d}").value for i in range(self.max_open_trades)]
+        if len(set(pairs)) < self.max_open_trades:
+            return []
+        return pairs
 
     def populate_indicators(self, dataframe: DataFrame, metadata: Dict) -> DataFrame:
         dataframe["dayofweek"] = dataframe["date"].dt.dayofweek
@@ -96,6 +99,19 @@ class HRPStrategy(IStrategy):
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: Dict) -> DataFrame:
         return dataframe
+
+    def is_fresh_candle(self, current_time: datetime, delta_minutes: int = 5) -> bool:
+        prev_candle_time = timeframe_to_prev_date(self.timeframe, current_time)
+        if (current_time - prev_candle_time) >= timedelta(minutes=delta_minutes):
+            return False
+        return True
+
+    def confirm_trade_exit(self, pair: str, trade: Trade, order_type: str, amount: float,
+                           rate: float, time_in_force: str, exit_reason: str,
+                           current_time: datetime, **kwargs) -> bool:
+        if not self.is_fresh_candle(current_time):
+            return False
+        return True
 
     def custom_stake_amount(self, pair: str, current_time: datetime, current_rate: float,
                             proposed_stake: float, min_stake: Optional[float], max_stake: float,
@@ -145,6 +161,9 @@ class HRPStrategy(IStrategy):
 
     def calculate_weights(self) -> Dict:
         data = {}
+
+        if not self.selected_pairs:
+            return {}
 
         for pair in self.selected_pairs:
             dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
