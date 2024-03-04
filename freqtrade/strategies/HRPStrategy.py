@@ -24,12 +24,11 @@ RISK_MEASURES = ["vol", "MV", "MAD", "GMD", "MSV", "FLPM", "SLPM", "VaR", "CVaR"
 
 class HRPStrategy(IStrategy):
     INTERFACE_VERSION: int = 3
-    timeframe: str = "12h"
+    timeframe: str = "4h"
     can_short: bool = False
     process_only_new_candles: bool = False
     use_exit_signal: bool = False
     ignore_buying_expired_candle_after: int = 3600
-    startup_candle_count: int = 100
     position_adjustment_enable: bool = True
 
     minimal_roi: Dict[str, float] = {}
@@ -41,8 +40,23 @@ class HRPStrategy(IStrategy):
 
     entry_dayofweek = IntParameter(0, 6, default=0, space="buy")
     rebalance_candle = CategoricalParameter(range(10, 360, 10), default=10, space="buy")
+    history_length = CategoricalParameter(range(50, 1050, 50), default=100, space="buy")
     risk_measure = CategoricalParameter(RISK_MEASURES, default="MV", space="buy", optimize=False)
-    max_num_pairs: int = 5
+
+    def __init__(self, config: Config) -> None:
+        super().__init__(config)
+        self.config = config
+    
+        for idx in range(self.config["max_open_trades"]):
+            setattr(
+                self,
+                f"pair_{idx:02d}",
+                CategoricalParameter(
+                    self.config["exchange"]["pair_whitelist"], 
+                    default="ETH/BTC",
+                    space="buy"
+                )
+            )
 
     class HyperOpt:
         def stoploss_space() -> List[Dimension]:
@@ -59,30 +73,17 @@ class HRPStrategy(IStrategy):
                 Categorical([True], name="trailing_only_offset_is_reached"),
             ]
 
-
-    def __init__(self, config: Config) -> None:
-        super().__init__(config)
-        self.config = config
-
-        for idx in range(self.max_num_pairs):
-            setattr(
-                self,
-                f"pair_{idx:02d}",
-                CategoricalParameter(
-                    self.config["exchange"]["pair_whitelist"], 
-                    default="ETH/BTC",
-                    space="buy"
-                )
-            )
+    @property
+    def startup_candle_count(self):
+        return self.history_length.value
 
     @property
     def selected_pairs(self):
-        return set([getattr(self, f"pair_{i:02d}").value for i in range(self.max_num_pairs)])
+        return set([getattr(self, f"pair_{i:02d}").value for i in range(self.max_open_trades)])
 
     def populate_indicators(self, dataframe: DataFrame, metadata: Dict) -> DataFrame:
         dataframe["dayofweek"] = dataframe["date"].dt.dayofweek
         dataframe["hour"] = dataframe["date"].dt.hour
-        dataframe["rsi"] = ta.RSI(dataframe, timeperiod=14)
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: Dict) -> DataFrame:
@@ -102,6 +103,9 @@ class HRPStrategy(IStrategy):
                             **kwargs) -> float:
         weights = self.calculate_weights()
         pair_weight = weights.get(pair, 0.0)
+        if pair_weight == 0:
+            return 0.0
+
         capital = self.wallets.get_total_stake_amount()
         stake_amount = pair_weight * capital
         logging.info(
@@ -144,8 +148,8 @@ class HRPStrategy(IStrategy):
 
         for pair in self.selected_pairs:
             dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
-            data[pair] = dataframe.iloc[-self.startup_candle_count:]["rsi"]
-        returns = DataFrame(data).pct_change().dropna()
+            data[pair] = dataframe.iloc[-self.startup_candle_count:]["close"]
+        returns = DataFrame(data).pct_change(fill_method=None).dropna()
 
         portfolio = rp.HCPortfolio(returns=returns)
         weights = portfolio.optimization(
