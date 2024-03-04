@@ -1,3 +1,12 @@
+# EXPERIMENTAL CODE
+# $ freqtrade hyperopt --userdir user_data \
+#    --config user_data/config.json --config user_data/HRPStrategy-pairs.json \
+#    --strategy HRPStrategy --timerange 20230101- --spaces buy sell \
+#    --epochs 1024 --print-all --disable-param-export \
+#    --hyperopt-loss CalmarHyperOptLoss --timeframe-detail 1h
+
+
+
 import logging
 from datetime import datetime, timedelta
 from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
