@@ -69,7 +69,7 @@ class RotatorStrategy(IStrategy):
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: Dict) -> DataFrame:
-        dataframe["enter_long"] = 1
+        dataframe[["enter_long", "enter_tag"]] = (1, "always_enter")
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: Dict) -> DataFrame:
@@ -100,4 +100,4 @@ class RotatorStrategy(IStrategy):
 
     def custom_exit(self, pair: str, *args, **kwargs):
         if pair not in self.top_pairs:
-            return "out"
+            return "exit_trade"
