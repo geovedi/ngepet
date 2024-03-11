@@ -92,10 +92,6 @@ class RotatorStrategy(IStrategy):
 
         data = sorted(data.items(), key=lambda x: x[1], reverse=True)
         self.top_pairs = [p[0] for p in data[: self.pair_threshold.value]]
-        logging.info(f"{current_time} -- bot_loop_start -- Top Pair: {self.top_pairs}")
-        logging.info(
-            f"{current_time} -- bot_loop_start -- Wallet: {self.wallets.get_total_stake_amount()}"
-        )
 
     def confirm_trade_entry(self, pair: str, *args, **kwargs) -> bool:
         if pair not in self.top_pairs:
