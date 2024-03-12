@@ -112,7 +112,7 @@ class RotatorTSFreshStrategy(IStrategy):
         )
 
         scaler = StandardScaler()
-        X = prep.fit_transform(features)
+        X = scaler.fit_transform(features)
 
         n = self.pair_threshold.value
         km = KMeans(n_clusters=n, random_state=0)
