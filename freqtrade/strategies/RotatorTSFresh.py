@@ -93,13 +93,14 @@ class RotatorTSFreshStrategy(IStrategy):
                 continue
             df = dataframe[["date", "close", "roc"]].iloc[-50:]
             df["pair"] = pair
+            data[pair] = df
             roc[pair] = dataframe["roc"].iat[-1]
 
         if not data:
             return
 
         # CLUSTERING
-        df = pd.concat(dfs, axis=0).dropna()
+        df = pd.concat(data, axis=0).dropna()
         features = extract_features(
             meh,
             column_id="pair",
