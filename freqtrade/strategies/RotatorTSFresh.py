@@ -19,6 +19,14 @@ from tsfresh.feature_extraction import MinimalFCParameters
 logger = logging.getLogger(__name__)
 
 
+class DisableLogger:
+    def __enter__(self):
+        logging.disable(logging.CRITICAL)
+
+    def __exit__(self, exit_type, exit_value, exit_traceback):
+        logging.disable(logging.NOTSET)
+
+
 class RotatorTSFreshStrategy(IStrategy):
     INTERFACE_VERSION: int = 3
     timeframe: str = "1d"
@@ -102,23 +110,23 @@ class RotatorTSFreshStrategy(IStrategy):
 
         # CLUSTERING
         df = concat(data, axis=0).dropna()
-        features = extract_features(
-            df,
-            column_id="pair",
-            column_sort="date",
-            column_kind=None,
-            column_value=None,
-            disable_progressbar=True,
-            default_fc_parameters=MinimalFCParameters(),
-        )
 
-        scaler = StandardScaler()
-        X = scaler.fit_transform(features)
-
-        n = self.pair_threshold.value
-        km = KMeans(n_clusters=n, random_state=0)
-
-        clusters = km.fit_predict(X)
+        with DisableLogger():
+            features = extract_features(
+                df,
+                column_id="pair",
+                column_sort="date",
+                column_kind=None,
+                column_value=None,
+                disable_progressbar=True,
+                show_warnings=False,
+                default_fc_parameters=MinimalFCParameters(),
+            )
+            scaler = StandardScaler()
+            X = scaler.fit_transform(features)
+            n = self.pair_threshold.value
+            km = KMeans(n_clusters=n, random_state=0)
+            clusters = km.fit_predict(X)
 
         top_pairs = []
         for key, group in itertools.groupby(
