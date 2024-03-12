@@ -7,11 +7,12 @@ import numpy as np
 import talib.abstract as ta
 from freqtrade.constants import Config
 from freqtrade.exchange import timeframe_to_prev_date
-from freqtrade.strategy import (BooleanParameter, CategoricalParameter,
-                                IStrategy)
+from freqtrade.strategy import BooleanParameter, CategoricalParameter, IStrategy
 from pandas import DataFrame, Series, concat
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
+
+# Simply ignore matrix_profile dependency missing warning
 from tsfresh import extract_features
 from tsfresh.feature_extraction import MinimalFCParameters
 
@@ -123,8 +124,13 @@ class RotatorTSFreshStrategy(IStrategy):
         for key, group in itertools.groupby(
             sorted(zip(clusters, pairs)), lambda x: x[0]
         ):
+            group = list(group)
+            if not group:
+                continue
             group_pairs = sorted(
-                [(x[1], roc.get(x[1])) for x in group], key=lambda x: x[1], reverse=True
+                [(x[1], roc.get(x[1], 0.0)) for x in group],
+                key=lambda x: x[1],
+                reverse=True,
             )
             top_pairs.append(group_pairs[0][0])
         self.top_pairs = top_pairs
