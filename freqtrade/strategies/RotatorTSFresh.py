@@ -9,7 +9,7 @@ from freqtrade.constants import Config
 from freqtrade.exchange import timeframe_to_prev_date
 from freqtrade.strategy import (BooleanParameter, CategoricalParameter,
                                 IStrategy)
-from pandas import DataFrame, Series
+from pandas import DataFrame, Series, concat
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from tsfresh import extract_features
@@ -100,7 +100,7 @@ class RotatorTSFreshStrategy(IStrategy):
             return
 
         # CLUSTERING
-        df = pd.concat(data, axis=0).dropna()
+        df = concat(data, axis=0).dropna()
         features = extract_features(
             meh,
             column_id="pair",
