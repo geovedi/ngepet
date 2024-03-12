@@ -1,7 +1,5 @@
 import itertools
 import logging
-import warnings
-
 from datetime import datetime, timedelta
 from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
 
@@ -10,11 +8,13 @@ import talib.abstract as ta
 from freqtrade.constants import Config
 from freqtrade.exchange import timeframe_to_prev_date
 from freqtrade.strategy import BooleanParameter, CategoricalParameter, IStrategy
-from pandas import DataFrame, Series
+from pandas import DataFrame, Series, concat
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
 
-# Simply ignore warning about h5py not installed
-from tslearn.clustering import TimeSeriesKMeans
-from tslearn.preprocessing import TimeSeriesScalerMeanVariance
+# Simply ignore matrix_profile dependency missing warning
+from tsfresh import extract_features
+from tsfresh.feature_extraction import MinimalFCParameters
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class DisableLogger:
         logging.disable(logging.NOTSET)
 
 
-class RotatorTSLearnStrategy(IStrategy):
+class RotatorTSFreshStrategy(IStrategy):
     INTERFACE_VERSION: int = 3
     timeframe: str = "1d"
     can_short: bool = False
@@ -94,33 +94,50 @@ class RotatorTSLearnStrategy(IStrategy):
         if (current_time - prev_candle_time) >= timedelta(minutes=5):
             return
 
-        data = {}
-        for pair in self.config["exchange"]["pair_whitelist"]:
+        pairs = self.config["exchange"]["pair_whitelist"]
+        data, roc = {}, {}
+        for pair in pairs:
             dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
             if dataframe.empty:
                 continue
-            # data[pair] = dataframe["roc"].iat[-1]
-            data[pair] = dataframe["roc"].iloc[-50:]
+            df = dataframe[["date", "close", "roc"]].iloc[-50:]
+            df["pair"] = pair
+            data[pair] = df
+            roc[pair] = dataframe["roc"].iat[-1]
 
         if not data:
             return
 
         # CLUSTERING
-        df = DataFrame(data)
-        df = df.dropna()
+        df = concat(data, axis=0).dropna()
 
         with DisableLogger():
-            X = TimeSeriesScalerMeanVariance().fit_transform(df.T)
+            features = extract_features(
+                df,
+                column_id="pair",
+                column_sort="date",
+                column_kind=None,
+                column_value=None,
+                n_jobs=0, # disable parallelisation
+                disable_progressbar=True,
+                show_warnings=False,
+                default_fc_parameters=MinimalFCParameters(),
+            )
+            scaler = StandardScaler()
+            X = scaler.fit_transform(features)
             n = self.pair_threshold.value
-            km = TimeSeriesKMeans(n_clusters=n, verbose=False)
+            km = KMeans(n_clusters=n, random_state=0)
             clusters = km.fit_predict(X)
 
         top_pairs = []
         for key, group in itertools.groupby(
-            sorted(zip(clusters, df.columns)), lambda x: x[0]
+            sorted(zip(clusters, pairs)), lambda x: x[0]
         ):
+            group = list(group)
+            if not group:
+                continue
             group_pairs = sorted(
-                [(x[1], df[x[1]].iat[-1]) for x in list(group)],
+                [(x[1], roc.get(x[1], 0.0)) for x in group],
                 key=lambda x: x[1],
                 reverse=True,
             )
