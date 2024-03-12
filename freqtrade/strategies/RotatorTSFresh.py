@@ -102,7 +102,7 @@ class RotatorTSFreshStrategy(IStrategy):
         # CLUSTERING
         df = concat(data, axis=0).dropna()
         features = extract_features(
-            meh,
+            df,
             column_id="pair",
             column_sort="date",
             column_kind=None,
