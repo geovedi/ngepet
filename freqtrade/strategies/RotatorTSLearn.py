@@ -1,5 +1,7 @@
 import itertools
 import logging
+import warnings
+
 from datetime import datetime, timedelta
 from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
 
@@ -15,6 +17,14 @@ from tslearn.clustering import TimeSeriesKMeans
 from tslearn.preprocessing import TimeSeriesScalerMeanVariance
 
 logger = logging.getLogger(__name__)
+
+
+class DisableLogger:
+    def __enter__(self):
+        logging.disable(logging.CRITICAL)
+
+    def __exit__(self, exit_type, exit_value, exit_traceback):
+        logging.disable(logging.NOTSET)
 
 
 class RotatorTSLearnStrategy(IStrategy):
@@ -99,10 +109,11 @@ class RotatorTSLearnStrategy(IStrategy):
         df = DataFrame(data)
         df = df.dropna()
 
-        X = TimeSeriesScalerMeanVariance().fit_transform(df.T)
-        n = self.pair_threshold.value
-        km = TimeSeriesKMeans(n_clusters=n, verbose=False)
-        clusters = km.fit_predict(X)
+        with DisableLogger():
+            X = TimeSeriesScalerMeanVariance().fit_transform(df.T)
+            n = self.pair_threshold.value
+            km = TimeSeriesKMeans(n_clusters=n, verbose=False)
+            clusters = km.fit_predict(X)
 
         top_pairs = []
         for key, group in itertools.groupby(
