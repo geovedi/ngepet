@@ -5,7 +5,6 @@ from freqtrade.strategy import CategoricalParameter, IStrategy
 class StrategyWithATRAveraging(IStrategy):
     averaging_multiplier_ratio = CategoricalParameter(np.arange(1.0, 2.05, 0.05).round(2), default=1.6, space="sell")
     averaging_gap_ratio = CategoricalParameter(np.arange(0.25, 3.25, 0.25).round(2), default=1.0, space="sell")
-    averaging_open_rate_method = CategoricalParameter(["AVERAGE", "DIRECTION"], default="AVERAGE", space="sell")
     averaging_mode = CategoricalParameter(["NONE", "UP", "DOWN", "BOTH"], default="UP", space="sell")
 
 
