@@ -160,7 +160,7 @@ class SortinoFilter(IPairList):
         :return: True if the pair can stay, false if it should be removed
         """
 
-        if self._min_sortino_ratio >= sortino_ratio:
+        if self._min_sortino_ratio <= sortino_ratio:
             result = True
         else:
             self.log_once(f"Removed {pair} from whitelist, because sortino ratio "
