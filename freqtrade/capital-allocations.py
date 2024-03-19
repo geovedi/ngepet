@@ -32,10 +32,27 @@ BACKTEST_METRICS_COLUMNS = [
 ]
 
 
-def load_backtest_data(file_path):
-    with open(file_path, "r") as file:
-        data = rapidjson.load(file)
-    return data
+def load_backtest_data(input_file_or_dir):
+    from pathlib import Path
+
+    fp = Path(input_file_or_dir)
+
+    def load_json(fp):
+        with fp.open("r") as fi:
+            return rapidjson.load(fi)
+
+    if fp.is_file():
+        return load_json(fp)
+
+    elif fp.is_dir():
+        strategies = {}
+        for fn in fp.glob("*.json"):
+            if fn.name.endswith(".meta.json") or fn.name == ".last_result.json":
+                continue
+            print(f"loading {fn.name}")
+            for key, value in load_json(fn)["strategy"].items():
+                strategies[key] = value
+        return {"strategy": strategies}
 
 
 def preprocess_data(data):
@@ -51,16 +68,17 @@ def preprocess_data(data):
     )
 
     scaler = StandardScaler()
-    scaled_metrics = scaler.fit_transform(df.drop(columns=["strategy_name"]))
+    scaled_metrics = scaler.fit_transform(df)
     weights = np.ones(scaled_metrics.shape[1])
     df["score"] = np.dot(scaled_metrics, weights)
     return df.sort_values(by="score", ascending=False)
 
 
 def calculate_allocations(
-    df, backtest_data, num_strategies=10, days=90, capital=10_000
+    df, backtest_data, num_strategies=10, days=90, capital=10_000, denominator=100
 ):
-    top_strategies = df.head(num_strategies)
+    top_strategies = df.iloc[:num_strategies]
+    print(top_strategies)
     daily_profits = {
         strat: pd.DataFrame(
             backtest_data["strategy"][strat]["daily_profit"], columns=["date", "profit"]
@@ -79,15 +97,17 @@ def calculate_allocations(
         max_k=int(np.sqrt(len(returns.columns))),
         leaf_order=True,
     )
-    allocation = 100 * (weights * capital // 100)
+    allocation = denominator * (weights * capital // denominator)
     return allocation
 
 
-def main(input_file, num_strategies=10, days=90, capital=10_000):
-    backtest_data = load_backtest_data(input_file)
+def main(
+    input_file_or_dir, num_strategies=10, days=90, capital=10_000, denominator=100
+):
+    backtest_data = load_backtest_data(input_file_or_dir)
     processed_data = preprocess_data(backtest_data)
     allocation = calculate_allocations(
-        processed_data, backtest_data, num_strategies, days, capital
+        processed_data, backtest_data, num_strategies, days, capital, denominator
     )
     print(allocation)
 
