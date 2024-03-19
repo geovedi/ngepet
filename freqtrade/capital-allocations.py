@@ -1,68 +1,91 @@
-import glob
-import os
-import re
+# This code is designed to analyse the performance of various trading strategies. 
+# It loads Freqtrade backtest results from a specified file, ranks these strategies 
+# based on a custom score derived from standardized performance metrics, and 
+# calculates capital allocations to the top strategies using a historical returns-based 
+# portfolio optimization approach.
+#
+# Additional riskfolio library is required. 
+# To install using `conda`: `conda install -c conda-forge riskfolio-lib`
+
 import fire
+import numpy as np
 import pandas as pd
-import talib.abstract as ta
 import rapidjson
-from freqtrade.data.btanalysis import load_backtest_data
+import riskfolio as rp
+from sklearn.preprocessing import StandardScaler
+
+BACKTEST_METRICS_COLUMNS = [
+    "strategy_name",
+    "total_trades",
+    "profit_mean",
+    "profit_median",
+    "profit_total",
+    "cagr",
+    "expectancy_ratio",
+    "sortino",
+    "sharpe",
+    "calmar",
+    "profit_factor",
+    "max_relative_drawdown",
+    "trades_per_day",
+    "winrate",
+]
 
 
-def autorename_columns(df):
-    tokenizer = lambda x: re.split(r"\W+", x)
-    tokens = list(map(tokenizer, df.columns))
-    common_tokens = set.intersection(*map(set, tokens))
-    unique_tokens = [
-        list(filter(lambda x: x not in common_tokens, sublist)) for sublist in tokens
-    ]
-    new_columns = list(map("-".join, unique_tokens))
-    return df.rename(columns=dict(zip(df.columns, new_columns)))
+def load_backtest_data(file_path):
+    with open(file_path, "r") as file:
+        data = rapidjson.load(file)
+    return data
 
 
-def main(
-    capital=5000.0,
-    resample_mode="W",
-    roc_period=4,
-    ema_period=8,
-    round_step=100,
-    user_dir="/home/ubuntu/freqtrade/user_data",
-):
-    df_list = list()
-    for fname in glob.glob(f"{user_dir}/backtest_results/*.json"):
-        if fname.endswith(".meta.json"):
-            continue
-
-        df = load_backtest_data(fname)
-        strategy_name = os.path.basename(fname).split("_")[0]
-        df = df[["close_date", "profit_abs"]].rename(
-            columns={"close_date": "date", "profit_abs": strategy_name}
-        )
-        df.set_index("date", inplace=True)
-        df_list.append(df)
-
-    df = pd.concat(df_list).resample(resample_mode).sum().cumsum()
-    df.drop(df.tail(1).index, inplace=True)
-
-    df = autorename_columns(df)
-    df = df[sorted(df.columns)]
-    print("\nReturns:")
-    print(df.tail(10).round(2))
-
-    df_roc = df.apply(lambda x: ta.ROC(x, timeperiod=roc_period))
-    W = df_roc.apply(lambda x: ta.EMA(x, timeperiod=ema_period))
-    W = W.div(W.abs().sum(axis=1), axis=0)
-    print("\nWeights:")
-    print(W.tail(10).round(2))
-
-    rounding = lambda x: (x // round_step) * round_step
-
-    allocations = (capital * W).iloc[-1].apply(rounding)
-
-    print(f"\nSuggested capital allocations: {allocations.sum()}")
-    print(
-        rapidjson.dumps(allocations.sort_index().to_dict(), indent=2)
+def preprocess_data(data):
+    df = pd.DataFrame(
+        [
+            pd.Series(strategy_data, index=BACKTEST_METRICS_COLUMNS)
+            for strategy_data in data["strategy"].values()
+        ]
     )
-    print()
+    df.set_index("strategy_name", inplace=True)
+    df["max_relative_drawdown"] = (
+        df["max_relative_drawdown"].max() - df["max_relative_drawdown"]
+    )
+
+    scaler = StandardScaler()
+    scaled_metrics = scaler.fit_transform(df.drop(columns=["strategy_name"]))
+    weights = np.ones(scaled_metrics.shape[1])
+    df["score"] = np.dot(scaled_metrics, weights)
+    return df.sort_values(by="score", ascending=False)
+
+
+def calculate_allocations(df, backtest_data, days=90, capital=10_000):
+    top_strategies = df.head(10)
+    daily_profits = {
+        strat: pd.DataFrame(
+            backtest_data["strategy"][strat]["daily_profit"], columns=["date", "profit"]
+        ).set_index("date")["profit"]
+        for strat in top_strategies.index
+    }
+
+    returns = pd.concat(daily_profits, axis=1).cumsum().pct_change().fillna(0)
+    portfolio = rp.HCPortfolio(returns=returns.tail(days))
+    weights = portfolio.optimization(
+        model="HRP",
+        codependence="pearson",
+        rm="MV",
+        rf=0,
+        linkage="single",
+        max_k=int(np.sqrt(len(returns.columns))),
+        leaf_order=True,
+    )
+    allocation = 100 * (weights * capital // 100)
+    return allocation
+
+
+def main(input_file, days=90, capital=10_000):
+    backtest_data = load_backtest_data(input_file)
+    processed_data = preprocess_data(backtest_data)
+    allocation = calculate_allocations(processed_data, backtest_data, days, capital)
+    print(allocation)
 
 
 if __name__ == "__main__":
