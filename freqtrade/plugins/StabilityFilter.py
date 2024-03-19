@@ -32,7 +32,7 @@ class StabilityFilter(IPairList):
         super().__init__(exchange, pairlistmanager, config, pairlistconfig, pairlist_pos)
 
         self._days = pairlistconfig.get('lookback_days', 10)
-        self._min_stability_score = pairlistconfig.get('min_stability_score', 0.5)
+        self._min_stability_score = pairlistconfig.get('min_stability_score', 0.85)
         self._refresh_period = pairlistconfig.get('refresh_period', 1440)
         self._def_candletype = self._config['candle_type_def']
         self._sort_direction: Optional[str] = pairlistconfig.get('sort_direction', None)
@@ -152,6 +152,8 @@ class StabilityFilter(IPairList):
             returns = returns.cumsum().iloc[-self._days:]
             trendline = np.linspace(returns.iloc[0], returns.iloc[-1], len(returns))
             stability_score = cosine_similarity(trendline, returns)
+
+            return stability_score
         else:
             return None
 
@@ -163,7 +165,7 @@ class StabilityFilter(IPairList):
         :return: True if the pair can stay, false if it should be removed
         """
 
-        if self._min_stability_score >= stability_score:
+        if self._min_stability_score <= stability_score:
             result = True
         else:
             self.log_once(f"Removed {pair} from whitelist, because Stability score "
