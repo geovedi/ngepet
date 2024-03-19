@@ -1,10 +1,10 @@
-# This code is designed to analyse the performance of various trading strategies. 
-# It loads Freqtrade backtest results from a specified file, ranks these strategies 
-# based on a custom score derived from standardized performance metrics, and 
-# calculates capital allocations to the top strategies using a historical returns-based 
+# This code is designed to analyze the performance of various trading strategies.
+# It loads Freqtrade backtest results from a specified file, ranks these strategies
+# based on a custom score derived from standardized performance metrics, and
+# calculates capital allocations to the top strategies using a historical returns-based
 # portfolio optimization approach.
 #
-# Additional riskfolio library is required. 
+# Additional riskfolio library is required.
 # To install using `conda`: `conda install -c conda-forge riskfolio-lib`
 
 import fire
@@ -57,8 +57,10 @@ def preprocess_data(data):
     return df.sort_values(by="score", ascending=False)
 
 
-def calculate_allocations(df, backtest_data, days=90, capital=10_000):
-    top_strategies = df.head(10)
+def calculate_allocations(
+    df, backtest_data, num_strategies=10, days=90, capital=10_000
+):
+    top_strategies = df.head(num_strategies)
     daily_profits = {
         strat: pd.DataFrame(
             backtest_data["strategy"][strat]["daily_profit"], columns=["date", "profit"]
@@ -81,10 +83,12 @@ def calculate_allocations(df, backtest_data, days=90, capital=10_000):
     return allocation
 
 
-def main(input_file, days=90, capital=10_000):
+def main(input_file, num_strategies=10, days=90, capital=10_000):
     backtest_data = load_backtest_data(input_file)
     processed_data = preprocess_data(backtest_data)
-    allocation = calculate_allocations(processed_data, backtest_data, days, capital)
+    allocation = calculate_allocations(
+        processed_data, backtest_data, num_strategies, days, capital
+    )
     print(allocation)
 
 
