@@ -9,12 +9,12 @@ dry_run_wallet: 0.1
 stake_amoung: "unlimited"
 min_trades: 100
 job_workers: -1
-epochs: 128
+epochs: 64
 hyperopt_loss: "SortinoHyperOptLossDaily"
 
 
 # AUTO-HYPEROPT CONFIG
-min_generated_strategies: 50
+max_generated_strategies: 20
 max_parallel_backtest: 8
 
 generate:
@@ -23,21 +23,21 @@ generate:
     - sell
 
 finetune_0:
-  spaces:
-    - trades
-
-finetune_1:
+  epochs: 32
   timeframe_detail: "5m"
   hyperopt_loss: "SortinoHyperOptLossDaily"
   spaces:
     - roi
     - stoploss
 
-finetune_2:
+finetune_1:
+  epochs: 32
   timeframe_detail: "5m"
-  hyperopt_loss: "SortinoHyperOptLossDaily"
+  hyperopt_loss: "SharpeHyperOptLossDaily"
   spaces:
     - trailing
 
 backtest:
   timeframe_detail: "5m"
+  timerange: "20231201-20240101"
+
