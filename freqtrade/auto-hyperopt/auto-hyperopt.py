@@ -76,20 +76,24 @@ def get_hyperopt_filepath(config, step):
 
 def filter_hyperopt_output(config, target):
     dirpath = Path(config["userdir"]) / "hyperopt_results"
-    latest_hyperopt = (
-        dirpath / rapidjson.load(dirpath / ".last_result.json")["latest_hyperopt"]
-    )
+    latest_hyperopt = rapidjson.load(dirpath / ".last_result.json")["latest_hyperopt"]
 
+    seen = set()
     with target.open("a") as f:
         for line in Path(latest_hyperopt).open("r"):
             data = rapidjson.loads(line)
             if data["loss"] > 0 or data["total_profit"] < 0:
                 continue
+            params = rapidjson.dumps(get_strategy_params(data))
+            if params in seen:
+                continue
+            seen.add(params)
             f.write(
-                rapidjson.dumps,
-                data,
-                default=hyperopt_serializer,
-                number_mode=HYPER_PARAMS_FILE_FORMAT,
+                rapidjson.dumps(
+                    data,
+                    default=hyperopt_serializer,
+                    number_mode=HYPER_PARAMS_FILE_FORMAT,
+                )
             )
             f.write("\n")
 
