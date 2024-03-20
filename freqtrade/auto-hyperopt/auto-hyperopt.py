@@ -5,19 +5,19 @@ import shutil
 import sys
 from copy import deepcopy
 from datetime import datetime, timezone
+from itertools import islice
 from pathlib import Path
 
 import fire
 import rapidjson
 import yaml
 from freqtrade.commands import Arguments
-from freqtrade.commands.optimize_commands import start_backtesting, start_hyperopt
+from freqtrade.commands.optimize_commands import (start_backtesting,
+                                                  start_hyperopt)
 from freqtrade.misc import deep_merge_dicts, safe_value_fallback2
-from freqtrade.optimize.hyperopt_tools import (
-    HYPER_PARAMS_FILE_FORMAT,
-    HyperoptTools,
-    hyperopt_serializer,
-)
+from freqtrade.optimize.hyperopt_tools import (HYPER_PARAMS_FILE_FORMAT,
+                                               HyperoptTools,
+                                               hyperopt_serializer)
 from joblib import Parallel, delayed
 
 BACKTEST_ARGS = """
@@ -76,11 +76,12 @@ def get_hyperopt_filepath(config, step):
 
 def filter_hyperopt_output(config, target):
     dirpath = Path(config["userdir"]) / "hyperopt_results"
-    latest_hyperopt = rapidjson.load(dirpath / ".last_result.json")["latest_hyperopt"]
+    json_file = dirpath / ".last_result.json"
+    last_result = rapidjson.load(json_file.open("r"))["latest_hyperopt"]
 
     seen = set()
     with target.open("a") as f:
-        for line in Path(latest_hyperopt).open("r"):
+        for line in (dirpath / last_result).open("r"):
             data = rapidjson.loads(line)
             if data["loss"] > 0 or data["total_profit"] < 0:
                 continue
@@ -97,7 +98,7 @@ def filter_hyperopt_output(config, target):
             )
             f.write("\n")
 
-    os.remove(latest_hyperopt)
+    (dirpath / last_result).unlink()
 
 
 def get_strategy_params(params, strategy):
@@ -198,6 +199,14 @@ def adjust_config(config, step):
     return config
 
 
+def batched(iterable, n):
+    if n < 1:
+        raise ValueError("n must be at least one")
+    it = iter(iterable)
+    while batch := tuple(islice(it, n)):
+        yield batch
+
+
 def run_generate(config):
     config = adjust_config(config, "generate")
     args = get_args(HYPEROPT_ARGS_BASE.format(**config).split())
@@ -234,6 +243,33 @@ def run_finetune(config):
             start_hyperopt(args)
             output = get_hyperopt_filepath(config, step)
             filter_hyperopt_output(config, output)
+
+
+def run_backtest(config):
+    n = max([n for n in range(10) if f"finetune_{n}" in config])
+    prev_step = f"finetune_{n}"
+    export_strategy(config, prev_step, "backtest")
+    strategy_path = (
+        Path(config["userdir"]) / "strategies" / config["strategy"] / "backtest"
+    )
+    strategies = [strat.stem for strat in strategy_path.glob(".py")]
+
+    config = adjust_config(config, step)
+    args = get_args(HYPEROPT_ARGS_BASE.format(**config).split())
+    args["strategy"] = None
+    args["strategy_path"] = strategy_path
+    args["recursive_strategy_search"] = True
+    args["strategy_list"] = strategies
+
+    def bt_wrapper(strat_list):
+        args["strategy_list"] = strat_list
+        start_backtesting(args)
+
+    start_backtesting(args)
+    _ = Parallel(n_jobs=-1)(
+        delayed(bt_wrapper)(f)
+        for f in batched(strategies, config["max_parallel_backtest"])
+    )
 
 
 def main(autoconfig, generate=False, finetune=False, backtest=False):
