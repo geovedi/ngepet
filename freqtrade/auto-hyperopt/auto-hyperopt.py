@@ -1,4 +1,5 @@
 import gc
+import hashlib
 import os
 import re
 import shutil
@@ -9,6 +10,8 @@ from itertools import islice
 from pathlib import Path
 
 import fire
+import numpy as np
+import pandas as pd
 import rapidjson
 import yaml
 from freqtrade.commands import Arguments
@@ -19,6 +22,7 @@ from freqtrade.optimize.hyperopt_tools import (HYPER_PARAMS_FILE_FORMAT,
                                                HyperoptTools,
                                                hyperopt_serializer)
 from joblib import Parallel, delayed
+from sklearn.preprocessing import StandardScaler
 
 BACKTEST_ARGS = """
 backtesting 
@@ -53,8 +57,25 @@ hyperopt
 DERIVED_STRATEGY_HEADER = """
 from {strategy} import {strategy}
 
-class {strategy}_{idx:03d}({strategy}):
+class {derived_strategy}_{idx:03d}({strategy}):
 """
+
+BACKTEST_METRICS_COLUMNS = [
+    "strategy_name",
+    "total_trades",
+    "profit_mean",
+    "profit_median",
+    "profit_total",
+    "cagr",
+    "expectancy_ratio",
+    "sortino",
+    "sharpe",
+    "calmar",
+    "profit_factor",
+    "max_relative_drawdown",
+    "trades_per_day",
+    "winrate",
+]
 
 
 def get_args(args):
@@ -74,21 +95,56 @@ def get_hyperopt_filepath(config, step):
     return dirpath / f"{config['strategy']}_{step}.fthypt"
 
 
-def filter_hyperopt_output(config, target):
+def get_params_id(data, strategy):
+    digest = hashlib.sha1()
+    params_str = rapidjson.dumps(
+        get_strategy_params(data, strategy),
+        default=hyperopt_serializer,
+        number_mode=HYPER_PARAMS_FILE_FORMAT,
+    )
+    digest.update(params_str.encode("utf-8"))
+    return digest.hexdigest().lower()
+
+
+def filter_hyperopt_output(config, target, use_latest=True):
     dirpath = Path(config["userdir"]) / "hyperopt_results"
     json_file = dirpath / ".last_result.json"
-    last_result = rapidjson.load(json_file.open("r"))["latest_hyperopt"]
+    if use_latest:
+        input_file = dirpath / rapidjson.load(json_file.open("r"))["latest_hyperopt"]
+    else:
+        input_file = target  # filtering the output
 
-    seen = set()
+    if not input_file.exists():
+        print(f'input_file "{input_file.name}" doesn\'t exist')
+        return
+
+    # Scoring
+    results = {}
+    for idx, line in enumerate(input_file.open("r")):
+        data = rapidjson.loads(line)
+        if data["loss"] > 0 or data["total_profit"] < 0:
+            continue
+        series = pd.Series(data["results_metrics"], index=BACKTEST_METRICS_COLUMNS)
+        series["strategy_name"] = f"{idx:05d}"
+        results[f"{idx:05d}"] = series
+    df = pd.DataFrame(results).T
+    df.set_index("strategy_name", inplace=True)
+
+    scaler = StandardScaler()
+    scaled_metrics = scaler.fit_transform(df)
+    weights = np.ones(scaled_metrics.shape[1])
+    df["score"] = np.dot(scaled_metrics, weights)
+    df = df.sort_values(by="score", ascending=False)
+    df = df[df["score"] > 0.0]
+    if not use_latest:
+        df = df.iloc[:config["max_generated_strategies"]]
+    selected = set(df.index.to_list())
+
     with target.open("a") as f:
-        for line in (dirpath / last_result).open("r"):
+        for idx, line in enumerate(input_file.open("r")):
+            if not f"{idx:05d}" in selected:
+                continue
             data = rapidjson.loads(line)
-            if data["loss"] > 0 or data["total_profit"] < 0:
-                continue
-            params = rapidjson.dumps(get_strategy_params(data))
-            if params in seen:
-                continue
-            seen.add(params)
             f.write(
                 rapidjson.dumps(
                     data,
@@ -97,8 +153,8 @@ def filter_hyperopt_output(config, target):
                 )
             )
             f.write("\n")
-
-    (dirpath / last_result).unlink()
+    if use_latest:
+        input_file.unlink()
 
 
 def get_strategy_params(params, strategy):
@@ -155,27 +211,34 @@ def params_pretty_print(params, space, header, non_optimized={}):
 
 
 def write_strategy_file(params, idx, target_dir, strategy):
-    outfile = target_dir / f"{strategy}_{idx:03d}.py"
-
     params_text = [
-        params_pretty_print(params, "buy", "Buy hyperspace params:"),
-        params_pretty_print(params, "sell", "Sell hyperspace params:"),
-        params_pretty_print(params, "roi", "ROI table:"),
-        params_pretty_print(params, "stoploss", "Stoploss:"),
-        params_pretty_print(params, "trailing", "Trailing stop:"),
-        params_pretty_print(params, "max_open_trades", "Max Open Trades:"),
+        params_pretty_print(params["params"], "buy", "Buy hyperspace params:", {}),
+        params_pretty_print(params["params"], "sell", "Sell hyperspace params:", {}),
+        params_pretty_print(params["params"], "roi", "ROI table:", {}),
+        params_pretty_print(params["params"], "stoploss", "Stoploss:", {}),
+        params_pretty_print(params["params"], "trailing", "Trailing stop:", {}),
+        params_pretty_print(
+            params["params"], "max_open_trades", "Max Open Trades:", {}
+        ),
     ]
-    params_text = filter(None, params_text)
-
+    params_text = list(filter(None, params_text))
+    derived_strategy = params["strategy_name"]
+    outfile = target_dir / f"{derived_strategy}_{idx:03d}.py"
     with outfile.open("w") as f:
-        f.write(DERIVED_STRATEGY_HEADER.format(idx=idx, strategy=strategy))
+        f.write(
+            DERIVED_STRATEGY_HEADER.format(
+                idx=idx,
+                strategy=strategy,
+                derived_strategy=derived_strategy,
+            )
+        )
         f.write("\n".join(params_text))
         f.write("\n")
 
 
 def export_strategy(config, source, target):
     strategy_path = Path(config["userdir"]) / "strategies" / config["strategy"]
-    target_dir = dirpath / target
+    target_dir = strategy_path / target
 
     if not target_dir.exists():
         os.makedirs(target_dir)
@@ -186,8 +249,19 @@ def export_strategy(config, source, target):
     input_file = get_hyperopt_filepath(config, source)
     for idx, line in enumerate(open(input_file, "r")):
         data = rapidjson.loads(line)
-        params = get_strategy_params(data)
+        strat_name = data["results_metrics"]["strategy_name"]
+        params = get_strategy_params(data, strat_name)
         write_strategy_file(params, idx, target_dir, config["strategy"])
+
+
+def has_processed(config, target):
+    seen = set()
+    if not target.exists():
+        return seen
+    for line in open(target, "r"):
+        data = rapidjson.loads(line)
+        seen.add(data["results_metrics"]["strategy_name"])
+    return seen
 
 
 def adjust_config(config, step):
@@ -213,9 +287,10 @@ def run_generate(config):
 
     output = get_hyperopt_filepath(config, "generate")
     strategy_count = count_lines(output)
-    while strategy_count < config["min_generated_strategies"]:
+    while strategy_count < config["max_generated_strategies"]:
         start_hyperopt(args)
         filter_hyperopt_output(config, output)
+        filter_hyperopt_output(config, output, use_latest=False)
         strategy_count = count_lines(output)
 
 
@@ -228,21 +303,24 @@ def run_finetune(config):
         args = get_args(HYPEROPT_ARGS_BASE.format(**config).split())
         export_strategy(
             config,
-            "generate" if step == 0 else f"finetune_{n - 1}",
+            "generate" if n == 0 else f"finetune_{n - 1}",
             step,
         )
         strategy_path = (
             Path(config["userdir"]) / "strategies" / config["strategy"] / step
         )
-        for strat in strategy_path.glob(".py"):
-            if strat.stem == config["strategy"]:
+        output = get_hyperopt_filepath(config, step)
+        seen = has_processed(config, output)
+        for strat in strategy_path.glob("*.py"):
+            if strat.stem == config["strategy"] or strat.stem in seen:
                 continue
             args["strategy"] = strat.stem
             args["strategy_path"] = strategy_path
             args["recursive_strategy_search"] = True
+            print(f"finetune_{n}: {strat.stem}")
             start_hyperopt(args)
-            output = get_hyperopt_filepath(config, step)
             filter_hyperopt_output(config, output)
+        filter_hyperopt_output(config, output, use_latest=False)
 
 
 def run_backtest(config):
@@ -276,7 +354,7 @@ def main(autoconfig, generate=False, finetune=False, backtest=False):
     with open(autoconfig, "r") as f:
         autoconfig = yaml.safe_load(f)
 
-    gc.set_threshold(0)
+    gc.set_threshold(50_000, 500, 1000)
 
     if generate:
         run_generate(autoconfig)
