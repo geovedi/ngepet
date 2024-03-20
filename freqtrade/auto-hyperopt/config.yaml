@@ -15,6 +15,7 @@ hyperopt_loss: "SortinoHyperOptLossDaily"
 
 # AUTO-HYPEROPT CONFIG
 min_generated_strategies: 50
+max_parallel_backtest: 8
 
 generate:
   spaces:
