@@ -1,245 +1,252 @@
-import argparse
+import gc
 import os
-import subprocess
-import glob
 import re
-import yaml
 import shutil
-import warnings
+import sys
+from copy import deepcopy
+from datetime import datetime, timezone
+from pathlib import Path
+
+import fire
+import rapidjson
+import yaml
+from freqtrade.commands import Arguments
+from freqtrade.commands.optimize_commands import start_backtesting, start_hyperopt
+from freqtrade.misc import deep_merge_dicts, safe_value_fallback2
+from freqtrade.optimize.hyperopt_tools import (
+    HYPER_PARAMS_FILE_FORMAT,
+    HyperoptTools,
+    hyperopt_serializer,
+)
 from joblib import Parallel, delayed
 
-warnings.filterwarnings('ignore')
+BACKTEST_ARGS = """
+backtesting 
+    --userdir {userdir}
+    --config {config}
+    --strategy {strategy}
+    --timeframe {timeframe}
+    --timeframe-detail {timeframe_detail}
+    --timerange {timerange}
+    --max-open-trades {max_open_trades}
+    --dry-run-wallet {dry_run_wallet}
+"""
+
+HYPEROPT_ARGS_BASE = """
+hyperopt
+    --userdir {userdir}
+    --config {config}
+    --strategy {strategy}
+    --timeframe {timeframe}
+    --timerange {timerange}
+    --max-open-trades {max_open_trades}
+    --dry-run-wallet {dry_run_wallet}
+    --hyperopt-loss {hyperopt_loss}
+    --min-trades {min_trades}
+    --job-workers {job_workers}
+    --epochs {epochs}
+    --spaces {spaces}
+    --print-all
+    --disable-param-export
+"""
+
+DERIVED_STRATEGY_HEADER = """
+from {strategy} import {strategy}
+
+class {strategy}_{idx:03d}({strategy}):
+"""
 
 
-def to_base36(num):
-    if num < 0:
-        raise ValueError("Number must be non-negative")
-
-    if num == 0:
-        return "0"
-
-    base36_chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    result = ""
-
-    while num > 0:
-        num, remainder = divmod(num, 36)
-        result = base36_chars[remainder] + result
-
-    return result
+def get_args(args):
+    return Arguments(args).get_parsed_arg()
 
 
-def clear_previous_results(config):
-    for file in glob.glob(
-            f"{config['result_dir']}/strategy_{config['strategy_name']}_*"):
-        os.remove(file)
-
-    strategy_param_file = f"strategies/{config['strategy_name']}.json"
-
-    if os.path.exists(strategy_param_file):
-        os.remove(strategy_param_file)
-
-
-def run_freqtrade_command(cmd, config):
-    cmd.extend(["--userdir", config["user_dir"]])
-    cmd.extend(["--config", config["base_config_file"]])
-    cmd.extend(["--config", config["strategy_config_file"]])
-
+def count_lines(fname):
     try:
-        subprocess.run(cmd)
-    except KeyboardInterrupt:
-        import sys
-
-        sys.exit()
-
-
-def run_hyperopt(config, is_finetune=False, strategy_path=None):
-    clear_previous_results(config)
-
-    if is_finetune:
-        timerange = config["timerange_finetune"]
-        timeframe_detail = config["timeframe_detail_finetune"]
-        spaces = config["spaces_finetune"]
-        epochs = str(config["epochs_finetune"])
-    else:
-        timerange = config["timerange_generate"]
-        timeframe_detail = config["timeframe_detail_generate"]
-        spaces = config["spaces_generate"]
-        epochs = str(config["epochs_generate"])
-
-    cmd = [
-        "freqtrade", "hyperopt",
-        "--hyperopt-loss", config["hyperopt_loss"],
-        "--strategy", config["strategy_name"],
-        "--fee", str(config["fee"]),
-        "--timeframe", config["timeframe"],
-        "--timeframe-detail", timeframe_detail,
-        "--timerange", timerange,
-        "--min-trades", str(config["min_trades"]),
-        "--spaces", *spaces,
-        "--epochs", epochs,
-        "--print-all",
-    ]
-
-    if strategy_path:
-        cmd.extend(["--strategy-path", strategy_path])
-
-    run_freqtrade_command(cmd, config)
-
-
-def process_hyperopt_results(fname, config):
-    csvfile = f"{config['result_dir']}/{os.path.basename(fname).replace('.fthypt', '.csv')}"
-    generate_csv_file(fname, csvfile, config)
-
-    if is_csv_empty(csvfile):
+        with open(fname, "r") as f:
+            return sum(1 for line in f)
+    except:
         return 0
 
-    return process_csv_file(csvfile, fname, config)
+
+def get_hyperopt_filepath(config, step):
+    dirpath = Path(config["userdir"]) / "hyperopt_results"
+    return dirpath / f"{config['strategy']}_{step}.fthypt"
 
 
-def generate_csv_file(fname, csvfile, config):
-    run_freqtrade_command(
-        [
-            "freqtrade", "hyperopt-list",
-            "--hyperopt-filename", os.path.basename(fname),
-            "--min-total-profit", str(config["min_total_profit"]),
-            "--min-objective", str(config["min_objective"]),
-            "--export-csv", csvfile,
-        ],
-        config,
+def filter_hyperopt_output(config, target):
+    dirpath = Path(config["userdir"]) / "hyperopt_results"
+    latest_hyperopt = (
+        dirpath / rapidjson.load(dirpath / ".last_result.json")["latest_hyperopt"]
     )
 
+    with target.open("a") as f:
+        for line in Path(latest_hyperopt).open("r"):
+            data = rapidjson.loads(line)
+            if data["loss"] > 0 or data["total_profit"] < 0:
+                continue
+            f.write(
+                rapidjson.dumps,
+                data,
+                default=hyperopt_serializer,
+                number_mode=HYPER_PARAMS_FILE_FORMAT,
+            )
+            f.write("\n")
 
-def is_csv_empty(csvfile):
-    return not os.path.exists(csvfile) or os.path.getsize(csvfile) == 0
-
-
-def process_csv_file(csvfile, fname, config):
-    strategy_count = 0
-    with open(csvfile, "r") as file:
-        next(file)  # Skip the header row
-        for line in file:
-            strategy_count = process_csv_line(line, fname, config,
-                                              strategy_count)
-            if strategy_count >= config["max_strategies"]:
-                break
-    return strategy_count
-
-
-def process_csv_line(line, fname, config, strategy_count):
-    index = line.split(",")[1].strip()
-    short_code = to_base36(int(re.sub("[^\d]", "", fname)))
-    new_strat_name = f"{config['strategy_name']}-{short_code}-{int(index):03d}"
-    output_dir = f"{config['user_dir']}/strategies/{new_strat_name}"
-    print(f"Preparing new Strategy configuration: {new_strat_name}")
-
-    run_freqtrade_command(
-        [
-            "freqtrade", "hyperopt-show",
-            "--hyperopt-filename", os.path.basename(fname),
-            "--index", index,
-        ],
-        config,
-    )
-
-    create_strategy_directory(output_dir)
-    copy_strategy_files(config, output_dir)
-
-    return strategy_count + 1
+    os.remove(latest_hyperopt)
 
 
-def create_strategy_directory(output_dir):
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+def get_strategy_params(params, strategy):
+    final_params = deepcopy(params["params_not_optimized"])
+    final_params = deep_merge_dicts(params["params_details"], final_params)
+    final_params = {
+        "strategy_name": strategy,
+        "params": final_params,
+        "ft_stratparam_v": 1,
+        "export_time": datetime.now(timezone.utc),
+    }
+    return final_params
 
 
-def copy_strategy_files(config, output_dir):
-    strategy_param_file = f"{config['user_dir']}/strategies/{config['strategy_name']}.json"
-    strategy_file = f"{config['user_dir']}/strategies/{config['strategy_name']}.py"
-    copy_file(strategy_param_file, output_dir)
-    copy_file(strategy_file, output_dir)
+def params_pretty_print(params, space, header, non_optimized={}):
+    if space in params or space in non_optimized:
+        space_params = HyperoptTools._space_params(params, space, 5)
+        no_params = HyperoptTools._space_params(non_optimized, space, 5)
+        appendix = ""
+        if not space_params and not no_params:
+            # No parameters - don't print
+            return
+        if not space_params:
+            # Not optimized parameters - append string
+            appendix = NON_OPT_PARAM_APPENDIX
+
+        result = f"\n# {header}\n"
+        if space == "stoploss":
+            stoploss = safe_value_fallback2(space_params, no_params, space, space)
+            result += f"stoploss = {stoploss}{appendix}"
+        elif space == "max_open_trades":
+            max_open_trades = safe_value_fallback2(
+                space_params, no_params, space, space
+            )
+            result += f"max_open_trades = {max_open_trades}{appendix}"
+        elif space == "roi":
+            result = result[:-1] + f"{appendix}\n"
+            minimal_roi_result = rapidjson.dumps(
+                {str(k): v for k, v in (space_params or no_params).items()},
+                default=str,
+                indent=4,
+                number_mode=rapidjson.NM_NATIVE,
+            )
+            result += f"minimal_roi = {minimal_roi_result}"
+        elif space == "trailing":
+            for k, v in (space_params or no_params).items():
+                result += f"{k} = {v}{appendix}\n"
+
+        else:
+            result += f"{space}_params = {HyperoptTools._pprint_dict(space_params, no_params)}"
+
+        result = result.replace("\n", "\n    ")
+        return result
 
 
-def copy_file(input_file, output_dir):
-    if os.path.exists(input_file):
-        shutil.copy(input_file,
-                    os.path.join(output_dir, os.path.basename(input_file)))
+def write_strategy_file(params, idx, target_dir, strategy):
+    outfile = target_dir / f"{strategy}_{idx:03d}.py"
+
+    params_text = [
+        params_pretty_print(params, "buy", "Buy hyperspace params:"),
+        params_pretty_print(params, "sell", "Sell hyperspace params:"),
+        params_pretty_print(params, "roi", "ROI table:"),
+        params_pretty_print(params, "stoploss", "Stoploss:"),
+        params_pretty_print(params, "trailing", "Trailing stop:"),
+        params_pretty_print(params, "max_open_trades", "Max Open Trades:"),
+    ]
+    params_text = filter(None, params_text)
+
+    with outfile.open("w") as f:
+        f.write(DERIVED_STRATEGY_HEADER.format(idx=idx, strategy=strategy))
+        f.write("\n".join(params_text))
+        f.write("\n")
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Freqtrade Strategy Automation Script")
-    parser.add_argument(
-        "--config",
-        "-c",
-        type=str,
-        required=True,
-        help="Path to the YAML configuration file",
-    )
-    parser.add_argument(
-        "--skip-generate",
-        action="store_true",
-        help="Skip the candidate generation step",
-    )
-    parser.add_argument(
-        "--skip-finetune",
-        action="store_true",
-        help="Skip the finetuning step",
-    )
-    parser.add_argument(
-        "--skip-backtest",
-        action="store_true",
-        help="Skip the backtesting step",
-    )
-    args = parser.parse_args()
+def export_strategy(config, source, target):
+    strategy_path = Path(config["userdir"]) / "strategies" / config["strategy"]
+    target_dir = dirpath / target
 
-    with open(args.config, "r") as file:
-        config = yaml.safe_load(file)
+    if not target_dir.exists():
+        os.makedirs(target_dir)
 
-    strat_pattern = f"{config['user_dir']}/strategies/{config['strategy_name']}-*-*"
-    strategy_count = len(glob.glob(strat_pattern))
+    strategy = Path(config["userdir"]) / "strategies" / f"{config['strategy']}.py"
+    shutil.copy(strategy, target_dir)
 
-    if not args.skip_generate:
-        while strategy_count < config["max_strategies"]:
-            # Generate candidates
-            run_hyperopt(config)
-            for fname in glob.glob(
-                    f"{config['result_dir']}/*_{config['strategy_name']}_*.fthypt"
-            ):
-                if os.path.exists(fname):
-                    strategy_count += process_hyperopt_results(fname, config)
-                if strategy_count >= config["max_strategies"]:
-                    break
+    input_file = get_hyperopt_filepath(config, source)
+    for idx, line in enumerate(open(input_file, "r")):
+        data = rapidjson.loads(line)
+        params = get_strategy_params(data)
+        write_strategy_file(params, idx, target_dir, config["strategy"])
 
-    # Finetune candidate
-    if not args.skip_finetune:
-        for strat_dir in glob.glob(strat_pattern):
-            run_hyperopt(config, is_finetune=True, strategy_path=strat_dir)
-    
-    # Backtesting candidate
-    def run_backtest(strat_dir):
-        strat_name = os.path.basename(strat_dir)
-        run_freqtrade_command(
-            [
-                "freqtrade", "backtesting",
-                "--strategy", config["strategy_name"],
-                "--strategy-path", strat_dir,
-                "--fee", str(config["fee"]),
-                "--timerange", config["timerange_backtest"],
-                "--timeframe", config["timeframe"],
-                "--timeframe-detail", config["timeframe_detail_backtest"],
-                "--export-filename", f"backtest_results/{strat_name}.json",
-                "--stake-amount", str(config["stake_amount_backtest"]),
-            ],
+
+def adjust_config(config, step):
+    for key, value in config[step].items():
+        if key == "spaces":
+            config["spaces"] = " ".join(value)
+        else:
+            config[key] = value
+    return config
+
+
+def run_generate(config):
+    config = adjust_config(config, "generate")
+    args = get_args(HYPEROPT_ARGS_BASE.format(**config).split())
+
+    output = get_hyperopt_filepath(config, "generate")
+    strategy_count = count_lines(output)
+    while strategy_count < config["min_generated_strategies"]:
+        start_hyperopt(args)
+        filter_hyperopt_output(config, output)
+        strategy_count = count_lines(output)
+
+
+def run_finetune(config):
+    for n in range(10):
+        step = f"finetune_{n}"
+        if not step in config:
+            continue
+        config = adjust_config(config, step)
+        args = get_args(HYPEROPT_ARGS_BASE.format(**config).split())
+        export_strategy(
             config,
+            "generate" if step == 0 else f"finetune_{n - 1}",
+            step,
         )
+        strategy_path = (
+            Path(config["userdir"]) / "strategies" / config["strategy"] / step
+        )
+        for strat in strategy_path.glob(".py"):
+            if strat.stem == config["strategy"]:
+                continue
+            args["strategy"] = strat.stem
+            args["strategy_path"] = strategy_path
+            args["recursive_strategy_search"] = True
+            start_hyperopt(args)
+            output = get_hyperopt_filepath(config, step)
+            filter_hyperopt_output(config, output)
 
-    def get_strategy_dirs():
-        for strat_dir in glob.glob(strat_pattern):
-            yield strat_dir
 
-    if not args.skip_backtest:
-        _ = Parallel(n_jobs=-1)(delayed(run_backtest)(s) for s in get_strategy_dirs())
+def main(autoconfig, generate=False, finetune=False, backtest=False):
+    with open(autoconfig, "r") as f:
+        autoconfig = yaml.safe_load(f)
+
+    gc.set_threshold(0)
+
+    if generate:
+        run_generate(autoconfig)
+
+    if finetune:
+        run_finetune(autoconfig)
+
+    if backtest:
+        run_backtest(autoconfig)
 
 
 if __name__ == "__main__":
-    main()
+    fire.Fire(main)
