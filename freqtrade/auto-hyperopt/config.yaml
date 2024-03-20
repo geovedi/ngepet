@@ -1,29 +1,37 @@
-strategy_name: "Finder"
-strategy_config_file: "config-seeker.json"
-user_dir: "/freqtrade/user_data"
-base_config_file: "config.json"
-result_dir: "hyperopt_results"
-hyperopt_loss: "MultiMetricLoss"
-spaces_generate:
-  - buy
-  - sell
-  - roi
-  - stoploss
-  - trades
-spaces_finetune:
-  - trailing
-timerange_generate: "20210101-20231201"
-timerange_finetune: "20210101-20231201"
-timerange_backtest: "20210101-20231201"
-timeframe: "12h"
-timeframe_detail_generate: "1h"
-timeframe_detail_finetune: "15m"
-timeframe_detail_backtest: "1m"
-stake_amount_backtest: "unlimited"
-fee: 0.001
-epochs_generate: 500
-epochs_finetune: 100
-max_strategies: 50
-min_trades: 250
-min_total_profit: 20000.0
-min_objective: -4.0
+# FREQTRADE CONFIG
+strategy: "SampleStrategy"
+userdir: "user_data"
+config: "user_data/config.json"
+timeframe: "4h"
+timerange: "20230701-20240101"
+max_open_trades: 10
+dry_run_wallet: 0.1
+stake_amoung: "unlimited"
+min_trades: 100
+job_workers: -1
+epochs: 512
+generate:
+  hyperopt_loss: "SortinoHyperOptLossDaily"
+  spaces:
+    - buy
+    - sell
+finetune_0:
+  hyperopt_loss: "MaxDrawDownHyperOptLoss"
+  spaces:
+    - trades
+finetune_1:
+  timeframe_detail: "5m"
+  hyperopt_loss: "SortinoHyperOptLossDaily"
+  spaces:
+    - roi
+    - stoploss
+finetune_2:
+  timeframe_detail: "5m"
+  hyperopt_loss: "SortinoHyperOptLossDaily"
+  spaces:
+    - trailing
+backtest:
+  timeframe_detail: "5m"
+
+# AUTO-HYPEROPT CONFIG
+min_generated_strategies: 50
