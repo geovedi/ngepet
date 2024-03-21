@@ -246,6 +246,9 @@ def export_strategy(config, source, target):
     strategy_path = Path(config["userdir"]) / "strategies" / config["strategy"]
     target_dir = strategy_path / target
 
+    if os.path.isdir(target_dir):
+        shutil.rmtree(target_dir)
+        
     if not target_dir.exists():
         os.makedirs(target_dir)
 
@@ -353,7 +356,7 @@ def run_backtest(config):
     )
     strategies = [strat.stem for strat in sorted(strategy_path.glob(".py"))]
 
-    config = adjust_config(config, step)
+    config = adjust_config(config, last_step)
     args = get_args(HYPEROPT_ARGS_BASE.format(**config).split())
     args["strategy"] = None
     args["strategy_path"] = strategy_path
