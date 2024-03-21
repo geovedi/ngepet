@@ -1,0 +1,25 @@
+diff --git a/freqtrade/commands/optimize_commands.py b/freqtrade/commands/optimize_commands.py
+index 837a5e4f3..40e5b6c06 100644
+--- a/freqtrade/commands/optimize_commands.py
++++ b/freqtrade/commands/optimize_commands.py
+@@ -1,3 +1,4 @@
++import gc
+ import logging
+ from typing import Any, Dict
+
+@@ -56,6 +57,7 @@ def start_backtesting(args: Dict[str, Any]) -> None:
+     # Initialize backtesting object
+     backtesting = Backtesting(config)
+     backtesting.start()
++    gc.collect()
+
+
+ def start_backtesting_show(args: Dict[str, Any]) -> None:
+@@ -115,6 +117,7 @@ def start_hyperopt(args: Dict[str, Any]) -> None:
+         # TODO: return False here in order to help freqtrade to exit
+         # with non-zero exit code...
+         # Same in Edge and Backtesting start() functions.
++    gc.collect()
+
+
+ def start_edge(args: Dict[str, Any]) -> None:
