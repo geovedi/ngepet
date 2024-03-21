@@ -378,21 +378,21 @@ def run_backtest(config):
     )
 
 
-def main(autoconfig, generate=False, finetune=False, backtest=False):
+def main(config, generate=False, finetune=False, backtest=False):
     setup_logging_pre()
-    with open(autoconfig, "r") as f:
-        autoconfig = yaml.safe_load(f)
+    with open(config, "r") as f:
+        config = yaml.safe_load(f)
 
     gc.set_threshold(50_000, 500, 1000)
 
     if generate:
-        run_generate(autoconfig)
+        run_generate(config)
 
     if finetune:
-        run_finetune(autoconfig)
+        run_finetune(config)
 
     if backtest:
-        run_backtest(autoconfig)
+        run_backtest(config)
 
 
 if __name__ == "__main__":
