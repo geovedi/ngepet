@@ -1,9 +1,11 @@
 import gc
 import hashlib
+import logging
 import os
 import re
 import shutil
 import sys
+import tempfile
 from copy import deepcopy
 from datetime import datetime, timezone
 from itertools import islice
@@ -17,12 +19,15 @@ import yaml
 from freqtrade.commands import Arguments
 from freqtrade.commands.optimize_commands import (start_backtesting,
                                                   start_hyperopt)
+from freqtrade.loggers import setup_logging_pre
 from freqtrade.misc import deep_merge_dicts, safe_value_fallback2
 from freqtrade.optimize.hyperopt_tools import (HYPER_PARAMS_FILE_FORMAT,
                                                HyperoptTools,
                                                hyperopt_serializer)
 from joblib import Parallel, delayed
 from sklearn.preprocessing import StandardScaler
+
+logger = logging.getLogger("freqtrade")
 
 BACKTEST_ARGS = """
 backtesting 
@@ -95,24 +100,14 @@ def get_hyperopt_filepath(config, step):
     return dirpath / f"{config['strategy']}_{step}.fthypt"
 
 
-def get_params_id(data, strategy):
-    digest = hashlib.sha1()
-    params_str = rapidjson.dumps(
-        get_strategy_params(data, strategy),
-        default=hyperopt_serializer,
-        number_mode=HYPER_PARAMS_FILE_FORMAT,
-    )
-    digest.update(params_str.encode("utf-8"))
-    return digest.hexdigest().lower()
-
-
 def filter_hyperopt_output(config, target, use_latest=True):
     dirpath = Path(config["userdir"]) / "hyperopt_results"
-    json_file = dirpath / ".last_result.json"
     if use_latest:
-        input_file = dirpath / rapidjson.load(json_file.open("r"))["latest_hyperopt"]
+        last_result_path = dirpath / ".last_result.json"
+        with last_result_path.open("r") as file:
+            input_file = dirpath / rapidjson.load(file)["latest_hyperopt"]
     else:
-        input_file = target  # filtering the output
+        input_file = target  # for filtering the output
 
     if not input_file.exists():
         print(f'input_file "{input_file.name}" doesn\'t exist')
@@ -120,27 +115,34 @@ def filter_hyperopt_output(config, target, use_latest=True):
 
     # Scoring
     results = {}
-    for idx, line in enumerate(input_file.open("r")):
-        data = rapidjson.loads(line)
-        if data["loss"] > 0 or data["total_profit"] < 0:
-            continue
-        series = pd.Series(data["results_metrics"], index=BACKTEST_METRICS_COLUMNS)
-        series["strategy_name"] = f"{idx:05d}"
-        results[f"{idx:05d}"] = series
+    with input_file.open("r") as f:
+        for idx, line in enumerate(f):
+            data = rapidjson.loads(line)
+            if data["loss"] > 0 or data["total_profit"] < 0:
+                continue
+            series = pd.Series(data["results_metrics"], index=BACKTEST_METRICS_COLUMNS)
+            series["strategy_name"] = f"{idx:05d}"
+            results[f"{idx:05d}"] = series
     df = pd.DataFrame(results).T
     df.set_index("strategy_name", inplace=True)
 
+    # Scale metrics and calculate scores
     scaler = StandardScaler()
     scaled_metrics = scaler.fit_transform(df)
     weights = np.ones(scaled_metrics.shape[1])
     df["score"] = np.dot(scaled_metrics, weights)
-    df = df.sort_values(by="score", ascending=False)
-    df = df[df["score"] > 0.0]
+
+    df = df[df["score"] > 0.0].sort_values(by="score", ascending=False)
     if not use_latest:
-        df = df.iloc[:config["max_generated_strategies"]]
+        df = df.iloc[: config["max_generated_strategies"]]
     selected = set(df.index.to_list())
 
-    with target.open("a") as f:
+    output_file = (
+        target.open(mode="a")
+        if use_latest
+        else tempfile.NamedTemporaryFile(mode="w", delete=False)
+    )
+    with output_file as f:
         for idx, line in enumerate(input_file.open("r")):
             if not f"{idx:05d}" in selected:
                 continue
@@ -151,10 +153,14 @@ def filter_hyperopt_output(config, target, use_latest=True):
                     default=hyperopt_serializer,
                     number_mode=HYPER_PARAMS_FILE_FORMAT,
                 )
+                + "\n"
             )
-            f.write("\n")
+
     if use_latest:
         input_file.unlink()
+    else:
+        shutil.copy(output_file.name, target)
+    gc_collect()
 
 
 def get_strategy_params(params, strategy):
@@ -281,7 +287,13 @@ def batched(iterable, n):
         yield batch
 
 
+def gc_collect():
+    collected = gc.collect()  # or gc.collect(2)
+    logger.info("Garbage collector: collected %d objects." % (collected))
+
+
 def run_generate(config):
+    logger.info(f"Auto-Hyperopt: Generating strategies")
     config = adjust_config(config, "generate")
     args = get_args(HYPEROPT_ARGS_BASE.format(**config).split())
 
@@ -292,18 +304,18 @@ def run_generate(config):
         filter_hyperopt_output(config, output)
         filter_hyperopt_output(config, output, use_latest=False)
         strategy_count = count_lines(output)
+        gc_collect()
 
 
 def run_finetune(config):
-    for n in range(10):
-        step = f"finetune_{n}"
-        if not step in config:
-            continue
+    steps = sorted([k for k in config.keys() if k.startswith("finetune_")])
+    for n, step in enumerate(steps):
+        logger.info(f"Auto-Hyperopt: Finetuning strategies. Step: {step}")
         config = adjust_config(config, step)
         args = get_args(HYPEROPT_ARGS_BASE.format(**config).split())
         export_strategy(
             config,
-            "generate" if n == 0 else f"finetune_{n - 1}",
+            "generate" if n == 0 else f"{steps[n-1]}",
             step,
         )
         strategy_path = (
@@ -311,26 +323,28 @@ def run_finetune(config):
         )
         output = get_hyperopt_filepath(config, step)
         seen = has_processed(config, output)
-        for strat in strategy_path.glob("*.py"):
+        for strat in sorted(strategy_path.glob("*.py")):
+            logger.info(f"Auto-Hyperopt Finetuning strategy: {strat.stem}. Step: {step}")
             if strat.stem == config["strategy"] or strat.stem in seen:
                 continue
             args["strategy"] = strat.stem
             args["strategy_path"] = strategy_path
             args["recursive_strategy_search"] = True
-            print(f"finetune_{n}: {strat.stem}")
             start_hyperopt(args)
             filter_hyperopt_output(config, output)
+            gc_collect()
         filter_hyperopt_output(config, output, use_latest=False)
 
 
 def run_backtest(config):
-    n = max([n for n in range(10) if f"finetune_{n}" in config])
-    prev_step = f"finetune_{n}"
-    export_strategy(config, prev_step, "backtest")
+    logger.info(f"Auto-Hyperopt: Backtesting strategies")
+    steps = sorted([k for k in config.keys() if k.startswith("finetune_")])
+    last_step = steps[-1]
+    export_strategy(config, last_step, "backtest")
     strategy_path = (
         Path(config["userdir"]) / "strategies" / config["strategy"] / "backtest"
     )
-    strategies = [strat.stem for strat in strategy_path.glob(".py")]
+    strategies = [strat.stem for strat in sorted(strategy_path.glob(".py"))]
 
     config = adjust_config(config, step)
     args = get_args(HYPEROPT_ARGS_BASE.format(**config).split())
@@ -340,8 +354,15 @@ def run_backtest(config):
     args["strategy_list"] = strategies
 
     def bt_wrapper(strat_list):
+        # HACK
+        digest = hashlib.sha1()
+        digest.update(" ".join(strat_list).encode())
+        fname = digest.hexdigest().lower() + ".json"
+        output_file = Path(config["userdir"]) / "backtest_results" / fname
         args["strategy_list"] = strat_list
+        args["exportfilename"] = output_file
         start_backtesting(args)
+        gc_collect()
 
     start_backtesting(args)
     _ = Parallel(n_jobs=-1)(
@@ -351,6 +372,7 @@ def run_backtest(config):
 
 
 def main(autoconfig, generate=False, finetune=False, backtest=False):
+    setup_logging_pre()
     with open(autoconfig, "r") as f:
         autoconfig = yaml.safe_load(f)
 
