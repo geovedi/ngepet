@@ -304,7 +304,6 @@ def run_generate(config):
         filter_hyperopt_output(config, output)
         filter_hyperopt_output(config, output, use_latest=False)
         strategy_count = count_lines(output)
-        gc_collect()
 
 
 def run_finetune(config):
@@ -324,15 +323,14 @@ def run_finetune(config):
         output = get_hyperopt_filepath(config, step)
         seen = has_processed(config, output)
         for strat in sorted(strategy_path.glob("*.py")):
-            logger.info(f"Auto-Hyperopt Finetuning strategy: {strat.stem}. Step: {step}")
             if strat.stem == config["strategy"] or strat.stem in seen:
                 continue
+            logger.info(f"Auto-Hyperopt Finetuning strategy: {strat.stem}. Step: {step}")
             args["strategy"] = strat.stem
             args["strategy_path"] = strategy_path
             args["recursive_strategy_search"] = True
             start_hyperopt(args)
             filter_hyperopt_output(config, output)
-            gc_collect()
         filter_hyperopt_output(config, output, use_latest=False)
 
 
