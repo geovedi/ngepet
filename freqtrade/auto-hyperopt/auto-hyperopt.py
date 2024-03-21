@@ -292,6 +292,13 @@ def gc_collect():
     logger.info("Garbage collector: collected %d objects." % (collected))
 
 
+def delete_tickerdata(config):
+    dirpath = Path(config["userdir"]) / "hyperopt_results"
+    f = dirpath / "hyperopt_tickerdata.pkl"
+    if f.exists():
+        f.unlink()
+
+
 def run_generate(config):
     logger.info(f"Auto-Hyperopt: Generating strategies")
     config = adjust_config(config, "generate")
@@ -300,6 +307,7 @@ def run_generate(config):
     output = get_hyperopt_filepath(config, "generate")
     strategy_count = count_lines(output)
     while strategy_count < config["max_generated_strategies"]:
+        delete_tickerdata(config) # HACK
         start_hyperopt(args)
         filter_hyperopt_output(config, output)
         filter_hyperopt_output(config, output, use_latest=False)
@@ -329,6 +337,7 @@ def run_finetune(config):
             args["strategy"] = strat.stem
             args["strategy_path"] = strategy_path
             args["recursive_strategy_search"] = True
+            delete_tickerdata(config) # HACK
             start_hyperopt(args)
             filter_hyperopt_output(config, output)
         filter_hyperopt_output(config, output, use_latest=False)
