@@ -1,10 +1,12 @@
 import glob
 import math
 import os
+from datetime import datetime, timezone
 
 import fire
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 
 def calculate_sortino(df):
@@ -44,7 +46,8 @@ def calculate_expectancy(df):
     return expectancy_ratio
 
 
-def main(directory_path, stake_currency="BTC", timeframe="1d", since="2020-01-01"):
+def main(directory_path, stake_currency="BTC", max_pairs=20, timeframe="1d",
+         since="2020-01-01"):
     scores = []
 
     for filename in glob.glob(
@@ -52,6 +55,10 @@ def main(directory_path, stake_currency="BTC", timeframe="1d", since="2020-01-01
     ):
         pair = os.path.basename(filename).split("-")[0].replace("_", "/")
         df = pd.read_feather(filename)
+        if df.iloc[0]["date"] > datetime.strptime(since, "%Y-%m-%d").replace(
+            tzinfo=timezone.utc
+        ):
+            continue
         df = df.loc[df["date"] >= since]
         scores.append(
             {
@@ -62,20 +69,20 @@ def main(directory_path, stake_currency="BTC", timeframe="1d", since="2020-01-01
         )
 
     score = pd.DataFrame(scores)
-
-    mean_sortino = score["sortino"].mean()
-    mean_expectancy_ratio = score["expectancy_ratio"].mean()
+    # https://stackoverflow.com/a/23202269
+    score = score[np.abs(stats.zscore(score["sortino"])) < 3]
+    score = score[np.abs(stats.zscore(score["expectancy_ratio"])) < 3]
 
     print(
-        score[(score["sortino"] > mean_sortino)].sort_values(
-            by="sortino", ascending=False
-        ).reset_index(drop=True)
+        score.sort_values(by="sortino", ascending=False)
+        .reset_index(drop=True)
+        .iloc[:max_pairs]
     )
     print()
     print(
-        score[(score["expectancy_ratio"] > mean_expectancy_ratio)].sort_values(
-            by="expectancy_ratio", ascending=False
-        ).reset_index(drop=True)
+        score.sort_values(by="expectancy_ratio", ascending=False)
+        .reset_index(drop=True)
+        .iloc[:max_pairs]
     )
 
 
