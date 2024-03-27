@@ -3,7 +3,7 @@
     "user_data/config.json"
   ],
   "user_data_dir": "user_data",
-  "strategy": "Evolver",
+  "strategy": "SampleStrategy",
   "timeframe": "4h",
   "timerange": "20210101-20240326",
   "max_open_trades": 5,
