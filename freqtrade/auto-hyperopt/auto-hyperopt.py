@@ -54,7 +54,6 @@ class AutoHyperopt:
         self.hyperopt_results_path = self.user_data_dir / "hyperopt_results"
         self.backtest_results_path = self.user_data_dir / "backtest_results"
         self.strategy_path = self.user_data_dir / "strategies"
-        self.previous_id = None
 
     def run(self):
         for pipeline in self.config.get("pipelines", []):
@@ -106,10 +105,14 @@ class AutoHyperopt:
     def _get_strategy_path(self, pipeline_id):
         last_hyperopt_optimize_id = None
         for pipeline in self.config["pipelines"]:
-            if pipeline["type"] == "hyperopt_optimize" and pipeline["id"] != pipeline_id:
+            if (
+                pipeline["type"] == "hyperopt_optimize"
+                and pipeline["id"] != pipeline_id
+            ):
                 last_hyperopt_optimize_id = pipeline["id"]
             elif pipeline["type"] == "backtesting" and pipeline["id"] == pipeline_id:
                 pipeline_id = last_hyperopt_optimize_id
+                break
 
         dirpath = self.strategy_path / self.config["strategy"] / pipeline_id
         os.makedirs(dirpath, exist_ok=True)
@@ -133,7 +136,7 @@ class AutoHyperopt:
             logger.error(f'Input file "{input_file.name}" doesn\'t exist')
             return
 
-        results, df = self._calculate_scores(input_file, use_latest)
+        results = self._calculate_scores(input_file, use_latest)
         self._save_selected_strategies(input_file, target, results, use_latest)
 
     def _calculate_scores(self, input_file, use_latest):
@@ -151,6 +154,8 @@ class AutoHyperopt:
 
         df = pd.DataFrame(results).T
         df.set_index("strategy_name", inplace=True)
+        # inverse drawdown
+        df["max_relative_drawdown"] = df["max_relative_drawdown"].max() - df["max_relative_drawdown"]
         scaler = StandardScaler()
         scaled_metrics = scaler.fit_transform(df)
         weights = np.ones(scaled_metrics.shape[1])
@@ -158,7 +163,7 @@ class AutoHyperopt:
         df = df[df["score"] > 0.0].sort_values(by="score", ascending=False)
         if not use_latest:
             df = df.iloc[: self.config["max_generated_strategies"]]
-        return results, df
+        return df["score"].to_dict()
 
     def _save_selected_strategies(self, input_file, target, results, use_latest):
         selected = set(results.keys())
@@ -265,7 +270,7 @@ class AutoHyperopt:
             lockfile.touch()
         return False
 
-    def _export_strategy(self, pipeline_id):
+    def _export_strategy(self, pipeline_id, previous_id):
         for pipeline in self.config["pipelines"]:
             if pipeline["id"] == pipeline_id and pipeline["type"] == "backtesting":
                 return
@@ -274,11 +279,11 @@ class AutoHyperopt:
         base_strategy = self.strategy_path / f"{self.config['strategy']}.py"
         shutil.copy(base_strategy, target_dir)
 
-        # HACK: Jim's strategies specific
+        # Jim's strategies specific
         # for rule_file in self.strategy_path.glob("*.rules"):
         #     shutil.copy(rule_file, target_dir)
 
-        input_file = self._get_hyperopt_result_path(self.previous_id)
+        input_file = self._get_hyperopt_result_path(previous_id)
 
         for idx, line in enumerate(open(input_file, "r")):
             data = rapidjson.loads(line)
@@ -289,9 +294,10 @@ class AutoHyperopt:
 
     def _run_hyperopt_generate(self, pipeline_id):
         if self._touch(pipeline_id):
-            self.previous_id = pipeline_id
             return
-        logger.info("Auto-Hyperopt: Generating strategies")
+        logger.info(
+            f"Auto-Hyperopt: Generating strategies - Pipeline ID: {pipeline_id}"
+        )
         config = self._adjust_config(pipeline_id)
         output = self._get_hyperopt_result_path(pipeline_id)
         while self._count_lines(output) < self.config["max_generated_candidates"]:
@@ -303,16 +309,16 @@ class AutoHyperopt:
         self._filter_hyperopt_output(output, use_latest=False)
         self._touch(pipeline_id, create=True)
         self._gc_collect()
-        self.previous_id = pipeline_id
 
     def _run_hyperopt_optimize(self, pipeline_id):
         if self._touch(pipeline_id):
-            self.previous_id = pipeline_id
             return
 
-        logger.info("Auto-Hyperopt: Optimizing strategies")
+        logger.info(
+            f"Auto-Hyperopt: Optimizing strategies - Pipeline ID: {pipeline_id}"
+        )
         config = self._adjust_config(pipeline_id)
-        self._export_strategy(pipeline_id)
+        self._export_strategy(pipeline_id, config["previous_id"])
         output = self._get_hyperopt_result_path(pipeline_id)
         strategy_path = self._get_strategy_path(pipeline_id)
         seen = self._has_processed(output)
@@ -337,16 +343,16 @@ class AutoHyperopt:
         self._filter_hyperopt_output(output, use_latest=True)
         self._touch(pipeline_id, create=True)
         self._gc_collect()
-        self.previous_id = pipeline_id
 
     def _run_backtesting(self, pipeline_id):
         if self._touch(pipeline_id):
-            self.previous_id = pipeline_id
             return
 
-        logger.info("Auto-Hyperopt: Backtesting strategies")
+        logger.info(
+            f"Auto-Hyperopt: Backtesting strategies - Pipeline ID: {pipeline_id}"
+        )
         config = self._adjust_config(pipeline_id)
-        self._export_strategy(pipeline_id)
+        self._export_strategy(pipeline_id, config["previous_id"])
         strategy_path = self._get_strategy_path(pipeline_id)
         strategies = [
             strat.stem
@@ -381,11 +387,10 @@ class AutoHyperopt:
             delayed(bt_wrapper)(list(batch))
             for batch in self._batched(strategies, self.config["max_parallel_backtest"])
         )
-        self.previous_id = pipeline_id
         self._touch(pipeline_id, create=True)
 
 
-def main(config_file):
+def main(config_file="auto.json"):
     gc.set_threshold(50_000, 500, 1000)
     setup_logging_pre()
     with open(config_file, "r") as f:
