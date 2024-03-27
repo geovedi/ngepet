@@ -390,7 +390,7 @@ class AutoHyperopt:
         self._touch(pipeline_id, create=True)
 
 
-def main(config_file="auto.json"):
+def main(config_file="config.json"):
     gc.set_threshold(50_000, 500, 1000)
     setup_logging_pre()
     with open(config_file, "r") as f:
