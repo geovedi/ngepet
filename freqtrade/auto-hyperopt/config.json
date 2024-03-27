@@ -1,0 +1,115 @@
+{
+  "config": [
+    "user_data/config.json"
+  ],
+  "user_data_dir": "user_data",
+  "strategy": "SampleStrategy",
+  "timeframe": "4h",
+  "max_open_trades": 5,
+  "stake_amount": "unlimited",
+  "dry_run_wallet": 1000,
+  "enable_protections": false,
+  "position_stacking": false,
+  "disableparamexport": true,
+  "hyperopt_jobs": 32,
+  "hyperopt_loss": "SortinoHyperOptLossDaily",
+  "hyperopt_min_trades": 150,
+  "print_all": true,
+  "max_generated_candidates": 100,
+  "max_parallel_backtest": 8,
+  "pipelines": [
+    {
+      "id": "00_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20210101-20220101",
+      "epochs": 3200,
+      "spaces": [
+        "buy",
+        "stoploss",
+        "roi"
+      ]
+    },
+    {
+      "id": "00_optimize",
+      "previous_id": "00_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20210101-20220101",
+      "epochs": 256,
+      "spaces": [
+        "stoploss",
+        "roi",
+        "trailing"
+      ]
+    },
+    {
+      "id": "00_testing",
+      "previous_id": "00_optimize",
+      "type": "backtesting",
+      "timeframe_detail": "15m",
+      "timerange": "20240101-20240401"
+    },
+    {
+      "id": "01_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20220101-20230101",
+      "epochs": 3200,
+      "spaces": [
+        "buy",
+        "stoploss",
+        "roi"
+      ]
+    },
+    {
+      "id": "01_optimize",
+      "previous_id": "01_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20220101-20230101",
+      "epochs": 256,
+      "spaces": [
+        "stoploss",
+        "roi",
+        "trailing"
+      ]
+    },
+    {
+      "id": "01_testing",
+      "previous_id": "01_optimize",
+      "type": "backtesting",
+      "timeframe_detail": "15m",
+      "timerange": "20240101-20240401"
+    },
+    {
+      "id": "02_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20230101-20240101",
+      "epochs": 3200,
+      "spaces": [
+        "buy",
+        "stoploss",
+        "roi"
+      ]
+    },
+    {
+      "id": "02_optimize",
+      "previous_id": "02_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20230101-20240101",
+      "epochs": 256,
+      "spaces": [
+        "stoploss",
+        "roi",
+        "trailing"
+      ]
+    },
+    {
+      "id": "02_testing",
+      "previous_id": "02_optimize",
+      "type": "backtesting",
+      "timeframe_detail": "15m",
+      "timerange": "20240101-20240401"
+    }
+  ]
+}
