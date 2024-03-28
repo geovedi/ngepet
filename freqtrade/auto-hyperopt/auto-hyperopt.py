@@ -4,6 +4,7 @@ import logging
 import os
 import shutil
 import sys
+import tempfile
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
@@ -127,13 +128,14 @@ class AutoHyperopt:
 
     def _filter_hyperopt_output(self, target, use_latest=True):
         last_result_path = self.hyperopt_results_path / ".last_result.json"
-        input_file = self.hyperopt_results_path / (
-            rapidjson.load(open(last_result_path, "r"))["latest_hyperopt"]
+        input_file = (
+            self.hyperopt_results_path
+            / rapidjson.load(open(last_result_path, "r"))["latest_hyperopt"]
             if use_latest
             else target
         )
         if not input_file.exists():
-            logger.error(f'Input file "{input_file.name}" doesn\'t exist')
+            logger.error(f'Input file "{input_file}" doesn\'t exist')
             return
 
         results = self._calculate_scores(input_file, use_latest)
@@ -155,14 +157,16 @@ class AutoHyperopt:
         df = pd.DataFrame(results).T
         df.set_index("strategy_name", inplace=True)
         # inverse drawdown
-        df["max_relative_drawdown"] = df["max_relative_drawdown"].max() - df["max_relative_drawdown"]
+        df["max_relative_drawdown"] = (
+            df["max_relative_drawdown"].max() - df["max_relative_drawdown"]
+        )
         scaler = StandardScaler()
         scaled_metrics = scaler.fit_transform(df)
         weights = np.ones(scaled_metrics.shape[1])
         df["score"] = np.dot(scaled_metrics, weights)
         df = df[df["score"] > 0.0].sort_values(by="score", ascending=False)
         if not use_latest:
-            df = df.iloc[: self.config["max_generated_strategies"]]
+            df = df.iloc[: self.config["max_generated_candidates"]]
         return df["score"].to_dict()
 
     def _save_selected_strategies(self, input_file, target, results, use_latest):
@@ -390,7 +394,7 @@ class AutoHyperopt:
         self._touch(pipeline_id, create=True)
 
 
-def main(config_file="config.json"):
+def main(config_file="auto.json"):
     gc.set_threshold(50_000, 500, 1000)
     setup_logging_pre()
     with open(config_file, "r") as f:
