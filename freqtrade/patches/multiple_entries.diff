@@ -1,8 +1,8 @@
 diff --git a/freqtrade/optimize/backtesting.py b/freqtrade/optimize/backtesting.py
-index b01bcf32e..2ac4b3273 100644
+index 326c48c62..5c0bb2411 100644
 --- a/freqtrade/optimize/backtesting.py
 +++ b/freqtrade/optimize/backtesting.py
-@@ -1153,15 +1153,20 @@ class Backtesting:
+@@ -1161,15 +1161,16 @@ class Backtesting:
              and not PairLocks.is_pair_locked(pair, row[DATE_IDX], trade_dir)
          ):
              if (self.trade_slot_available(open_trade_count_start)):
@@ -15,18 +15,14 @@ index b01bcf32e..2ac4b3273 100644
 -                    # logger.debug(f"{pair} - Emulate creation of new trade: {trade}.")
 -                    LocalTrade.add_bt_trade(trade)
 -                    self.wallets.update()
-+                if len(row) >= ENTER_TAG_IDX + 1:
++                try:
 +                    entry_tags = row[ENTER_TAG_IDX].strip().split()
-+                else:
++                except:
 +                    entry_tags = [None]
 +                for entry_tag in entry_tags:
 +                    trade = self._enter_trade(pair, row, trade_dir, entry_tag1=entry_tag)
 +                    if trade:
-+                        # TODO: hacky workaround to avoid opening > max_open_trades
-+                        # This emulates previous behavior - not sure if this is correct
-+                        # Prevents entering if the trade-slot was freed in this candle
 +                        open_trade_count_start += 1
-+                        # logger.debug(f"{pair} - Emulate creation of new trade: {trade}.")
 +                        LocalTrade.add_bt_trade(trade)
 +                        self.wallets.update()
              else:
