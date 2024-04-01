@@ -5,7 +5,7 @@
 import time
 import numpy as np
 
-class Evolver(IStrategy):
+class SampleStrategy(IStrategy):
 
   def bot_loop_start(self, current_time: datetime, **kwargs) -> None:
         if self.dp.runmode.value in ('live', 'dry_run'):
