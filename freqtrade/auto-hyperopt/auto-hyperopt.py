@@ -7,6 +7,7 @@ import sys
 import tempfile
 from copy import deepcopy
 from datetime import datetime, timezone
+from itertools import islice
 from pathlib import Path
 
 import fire
@@ -96,6 +97,7 @@ class AutoHyperopt:
                 continue
             for k, v in p.items():
                 config[k] = v
+        del config["pipelines"]
         return config
 
     def _get_hyperopt_result_path(self, pipeline_id):
@@ -104,16 +106,16 @@ class AutoHyperopt:
         return dirpath / f"{pipeline_id}.fthypt"
 
     def _get_strategy_path(self, pipeline_id):
-        last_hyperopt_optimize_id = None
-        for pipeline in self.config["pipelines"]:
-            if (
-                pipeline["type"] == "hyperopt_optimize"
-                and pipeline["id"] != pipeline_id
-            ):
-                last_hyperopt_optimize_id = pipeline["id"]
-            elif pipeline["type"] == "backtesting" and pipeline["id"] == pipeline_id:
-                pipeline_id = last_hyperopt_optimize_id
-                break
+        # last_hyperopt_optimize_id = None
+        # for pipeline in self.config["pipelines"]:
+        #     if (
+        #         pipeline["type"] == "hyperopt_optimize"
+        #         and pipeline["id"] != pipeline_id
+        #     ):
+        #         last_hyperopt_optimize_id = pipeline["id"]
+        #     elif pipeline["type"] == "backtesting" and pipeline["id"] == pipeline_id:
+        #         pipeline_id = last_hyperopt_optimize_id
+        #         break
 
         dirpath = self.strategy_path / self.config["strategy"] / pipeline_id
         os.makedirs(dirpath, exist_ok=True)
@@ -275,9 +277,11 @@ class AutoHyperopt:
         return False
 
     def _export_strategy(self, pipeline_id, previous_id):
-        for pipeline in self.config["pipelines"]:
-            if pipeline["id"] == pipeline_id and pipeline["type"] == "backtesting":
-                return
+        logger.info(f"Export strategies for pipeline_id: {pipeline_id}, "
+                    f"with previous_id: {previous_id}")
+        # for pipeline in self.config["pipelines"]:
+        #     if pipeline["id"] == pipeline_id and pipeline["type"] == "backtesting":
+        #         return
 
         target_dir = self._get_strategy_path(pipeline_id)
         base_strategy = self.strategy_path / f"{self.config['strategy']}.py"
@@ -344,7 +348,7 @@ class AutoHyperopt:
             self._filter_hyperopt_output(output)
             self._gc_collect()
 
-        self._filter_hyperopt_output(output, use_latest=True)
+        self._filter_hyperopt_output(output, use_latest=False)
         self._touch(pipeline_id, create=True)
         self._gc_collect()
 
@@ -382,6 +386,7 @@ class AutoHyperopt:
                 }
             )
             try:
+                logger.info(config)
                 start_backtesting(config)
             except KeyboardInterrupt:
                 sys.exit()
