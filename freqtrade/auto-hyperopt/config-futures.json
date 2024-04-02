@@ -1,0 +1,1310 @@
+{
+  "config": [
+    "user_data/config.USDT.2022.sortino.futures.json"
+  ],
+  "user_data_dir": "user_data",
+  "strategy": "MultiEntriesFutures",
+  "timeframe": "4h",
+  "max_open_trades": 5,
+  "stake_amount": "unlimited",
+  "dry_run_wallet": 1000,
+  "enable_protections": false,
+  "position_stacking": false,
+  "disableparamexport": true,
+  "hyperopt_jobs": 32,
+  "hyperopt_loss": "TripleSLoss",
+  "hyperopt_min_trades": 100,
+  "print_all": true,
+  "max_generated_candidates": 50,
+  "max_parallel_backtest": 8,
+  "pipelines": [
+    {
+      "id": "20210101-20220101_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20210101-20220101",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20210101-20220101_optimize_buy",
+      "previous_id": "20210101-20220101_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20210101-20220101",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20210101-20220101_optimize_sell",
+      "previous_id": "20210101-20220101_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20210101-20220101",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20210101-20220101_testing_buy",
+      "previous_id": "20210101-20220101_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20210101-20220101"
+    },
+    {
+      "id": "20210101-20220101_testing_sell",
+      "previous_id": "20210101-20220101_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20210101-20220101"
+    },
+    {
+      "id": "20210201-20220201_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20210201-20220201",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20210201-20220201_optimize_buy",
+      "previous_id": "20210201-20220201_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20210201-20220201",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20210201-20220201_optimize_sell",
+      "previous_id": "20210201-20220201_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20210201-20220201",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20210201-20220201_testing_buy",
+      "previous_id": "20210201-20220201_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20210201-20220201"
+    },
+    {
+      "id": "20210201-20220201_testing_sell",
+      "previous_id": "20210201-20220201_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20210201-20220201"
+    },
+    {
+      "id": "20210301-20220301_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20210301-20220301",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20210301-20220301_optimize_buy",
+      "previous_id": "20210301-20220301_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20210301-20220301",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20210301-20220301_optimize_sell",
+      "previous_id": "20210301-20220301_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20210301-20220301",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20210301-20220301_testing_buy",
+      "previous_id": "20210301-20220301_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20210301-20220301"
+    },
+    {
+      "id": "20210301-20220301_testing_sell",
+      "previous_id": "20210301-20220301_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20210301-20220301"
+    },
+    {
+      "id": "20210401-20220401_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20210401-20220401",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20210401-20220401_optimize_buy",
+      "previous_id": "20210401-20220401_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20210401-20220401",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20210401-20220401_optimize_sell",
+      "previous_id": "20210401-20220401_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20210401-20220401",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20210401-20220401_testing_buy",
+      "previous_id": "20210401-20220401_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20210401-20220401"
+    },
+    {
+      "id": "20210401-20220401_testing_sell",
+      "previous_id": "20210401-20220401_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20210401-20220401"
+    },
+    {
+      "id": "20210501-20220501_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20210501-20220501",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20210501-20220501_optimize_buy",
+      "previous_id": "20210501-20220501_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20210501-20220501",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20210501-20220501_optimize_sell",
+      "previous_id": "20210501-20220501_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20210501-20220501",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20210501-20220501_testing_buy",
+      "previous_id": "20210501-20220501_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20210501-20220501"
+    },
+    {
+      "id": "20210501-20220501_testing_sell",
+      "previous_id": "20210501-20220501_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20210501-20220501"
+    },
+    {
+      "id": "20210601-20220601_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20210601-20220601",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20210601-20220601_optimize_buy",
+      "previous_id": "20210601-20220601_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20210601-20220601",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20210601-20220601_optimize_sell",
+      "previous_id": "20210601-20220601_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20210601-20220601",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20210601-20220601_testing_buy",
+      "previous_id": "20210601-20220601_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20210601-20220601"
+    },
+    {
+      "id": "20210601-20220601_testing_sell",
+      "previous_id": "20210601-20220601_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20210601-20220601"
+    },
+    {
+      "id": "20210701-20220701_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20210701-20220701",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20210701-20220701_optimize_buy",
+      "previous_id": "20210701-20220701_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20210701-20220701",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20210701-20220701_optimize_sell",
+      "previous_id": "20210701-20220701_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20210701-20220701",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20210701-20220701_testing_buy",
+      "previous_id": "20210701-20220701_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20210701-20220701"
+    },
+    {
+      "id": "20210701-20220701_testing_sell",
+      "previous_id": "20210701-20220701_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20210701-20220701"
+    },
+    {
+      "id": "20210801-20220801_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20210801-20220801",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20210801-20220801_optimize_buy",
+      "previous_id": "20210801-20220801_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20210801-20220801",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20210801-20220801_optimize_sell",
+      "previous_id": "20210801-20220801_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20210801-20220801",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20210801-20220801_testing_buy",
+      "previous_id": "20210801-20220801_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20210801-20220801"
+    },
+    {
+      "id": "20210801-20220801_testing_sell",
+      "previous_id": "20210801-20220801_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20210801-20220801"
+    },
+    {
+      "id": "20210901-20220901_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20210901-20220901",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20210901-20220901_optimize_buy",
+      "previous_id": "20210901-20220901_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20210901-20220901",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20210901-20220901_optimize_sell",
+      "previous_id": "20210901-20220901_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20210901-20220901",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20210901-20220901_testing_buy",
+      "previous_id": "20210901-20220901_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20210901-20220901"
+    },
+    {
+      "id": "20210901-20220901_testing_sell",
+      "previous_id": "20210901-20220901_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20210901-20220901"
+    },
+    {
+      "id": "20211001-20221001_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20211001-20221001",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20211001-20221001_optimize_buy",
+      "previous_id": "20211001-20221001_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20211001-20221001",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20211001-20221001_optimize_sell",
+      "previous_id": "20211001-20221001_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20211001-20221001",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20211001-20221001_testing_buy",
+      "previous_id": "20211001-20221001_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20211001-20221001"
+    },
+    {
+      "id": "20211001-20221001_testing_sell",
+      "previous_id": "20211001-20221001_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20211001-20221001"
+    },
+    {
+      "id": "20211101-20221101_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20211101-20221101",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20211101-20221101_optimize_buy",
+      "previous_id": "20211101-20221101_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20211101-20221101",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20211101-20221101_optimize_sell",
+      "previous_id": "20211101-20221101_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20211101-20221101",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20211101-20221101_testing_buy",
+      "previous_id": "20211101-20221101_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20211101-20221101"
+    },
+    {
+      "id": "20211101-20221101_testing_sell",
+      "previous_id": "20211101-20221101_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20211101-20221101"
+    },
+    {
+      "id": "20211201-20221201_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20211201-20221201",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20211201-20221201_optimize_buy",
+      "previous_id": "20211201-20221201_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20211201-20221201",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20211201-20221201_optimize_sell",
+      "previous_id": "20211201-20221201_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20211201-20221201",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20211201-20221201_testing_buy",
+      "previous_id": "20211201-20221201_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20211201-20221201"
+    },
+    {
+      "id": "20211201-20221201_testing_sell",
+      "previous_id": "20211201-20221201_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20211201-20221201"
+    },
+    {
+      "id": "20220101-20230101_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20220101-20230101",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20220101-20230101_optimize_buy",
+      "previous_id": "20220101-20230101_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20220101-20230101",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20220101-20230101_optimize_sell",
+      "previous_id": "20220101-20230101_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20220101-20230101",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20220101-20230101_testing_buy",
+      "previous_id": "20220101-20230101_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20220101-20230101"
+    },
+    {
+      "id": "20220101-20230101_testing_sell",
+      "previous_id": "20220101-20230101_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20220101-20230101"
+    },
+    {
+      "id": "20220201-20230201_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20220201-20230201",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20220201-20230201_optimize_buy",
+      "previous_id": "20220201-20230201_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20220201-20230201",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20220201-20230201_optimize_sell",
+      "previous_id": "20220201-20230201_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20220201-20230201",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20220201-20230201_testing_buy",
+      "previous_id": "20220201-20230201_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20220201-20230201"
+    },
+    {
+      "id": "20220201-20230201_testing_sell",
+      "previous_id": "20220201-20230201_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20220201-20230201"
+    },
+    {
+      "id": "20220301-20230301_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20220301-20230301",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20220301-20230301_optimize_buy",
+      "previous_id": "20220301-20230301_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20220301-20230301",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20220301-20230301_optimize_sell",
+      "previous_id": "20220301-20230301_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20220301-20230301",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20220301-20230301_testing_buy",
+      "previous_id": "20220301-20230301_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20220301-20230301"
+    },
+    {
+      "id": "20220301-20230301_testing_sell",
+      "previous_id": "20220301-20230301_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20220301-20230301"
+    },
+    {
+      "id": "20220401-20230401_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20220401-20230401",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20220401-20230401_optimize_buy",
+      "previous_id": "20220401-20230401_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20220401-20230401",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20220401-20230401_optimize_sell",
+      "previous_id": "20220401-20230401_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20220401-20230401",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20220401-20230401_testing_buy",
+      "previous_id": "20220401-20230401_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20220401-20230401"
+    },
+    {
+      "id": "20220401-20230401_testing_sell",
+      "previous_id": "20220401-20230401_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20220401-20230401"
+    },
+    {
+      "id": "20220501-20230501_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20220501-20230501",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20220501-20230501_optimize_buy",
+      "previous_id": "20220501-20230501_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20220501-20230501",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20220501-20230501_optimize_sell",
+      "previous_id": "20220501-20230501_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20220501-20230501",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20220501-20230501_testing_buy",
+      "previous_id": "20220501-20230501_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20220501-20230501"
+    },
+    {
+      "id": "20220501-20230501_testing_sell",
+      "previous_id": "20220501-20230501_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20220501-20230501"
+    },
+    {
+      "id": "20220601-20230601_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20220601-20230601",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20220601-20230601_optimize_buy",
+      "previous_id": "20220601-20230601_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20220601-20230601",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20220601-20230601_optimize_sell",
+      "previous_id": "20220601-20230601_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20220601-20230601",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20220601-20230601_testing_buy",
+      "previous_id": "20220601-20230601_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20220601-20230601"
+    },
+    {
+      "id": "20220601-20230601_testing_sell",
+      "previous_id": "20220601-20230601_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20220601-20230601"
+    },
+    {
+      "id": "20220701-20230701_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20220701-20230701",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20220701-20230701_optimize_buy",
+      "previous_id": "20220701-20230701_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20220701-20230701",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20220701-20230701_optimize_sell",
+      "previous_id": "20220701-20230701_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20220701-20230701",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20220701-20230701_testing_buy",
+      "previous_id": "20220701-20230701_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20220701-20230701"
+    },
+    {
+      "id": "20220701-20230701_testing_sell",
+      "previous_id": "20220701-20230701_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20220701-20230701"
+    },
+    {
+      "id": "20220801-20230801_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20220801-20230801",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20220801-20230801_optimize_buy",
+      "previous_id": "20220801-20230801_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20220801-20230801",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20220801-20230801_optimize_sell",
+      "previous_id": "20220801-20230801_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20220801-20230801",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20220801-20230801_testing_buy",
+      "previous_id": "20220801-20230801_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20220801-20230801"
+    },
+    {
+      "id": "20220801-20230801_testing_sell",
+      "previous_id": "20220801-20230801_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20220801-20230801"
+    },
+    {
+      "id": "20220901-20230901_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20220901-20230901",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20220901-20230901_optimize_buy",
+      "previous_id": "20220901-20230901_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20220901-20230901",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20220901-20230901_optimize_sell",
+      "previous_id": "20220901-20230901_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20220901-20230901",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20220901-20230901_testing_buy",
+      "previous_id": "20220901-20230901_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20220901-20230901"
+    },
+    {
+      "id": "20220901-20230901_testing_sell",
+      "previous_id": "20220901-20230901_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20220901-20230901"
+    },
+    {
+      "id": "20221001-20231001_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20221001-20231001",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20221001-20231001_optimize_buy",
+      "previous_id": "20221001-20231001_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20221001-20231001",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20221001-20231001_optimize_sell",
+      "previous_id": "20221001-20231001_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20221001-20231001",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20221001-20231001_testing_buy",
+      "previous_id": "20221001-20231001_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20221001-20231001"
+    },
+    {
+      "id": "20221001-20231001_testing_sell",
+      "previous_id": "20221001-20231001_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20221001-20231001"
+    },
+    {
+      "id": "20221101-20231101_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20221101-20231101",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20221101-20231101_optimize_buy",
+      "previous_id": "20221101-20231101_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20221101-20231101",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20221101-20231101_optimize_sell",
+      "previous_id": "20221101-20231101_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20221101-20231101",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20221101-20231101_testing_buy",
+      "previous_id": "20221101-20231101_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20221101-20231101"
+    },
+    {
+      "id": "20221101-20231101_testing_sell",
+      "previous_id": "20221101-20231101_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20221101-20231101"
+    },
+    {
+      "id": "20221201-20231201_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20221201-20231201",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20221201-20231201_optimize_buy",
+      "previous_id": "20221201-20231201_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20221201-20231201",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20221201-20231201_optimize_sell",
+      "previous_id": "20221201-20231201_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20221201-20231201",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20221201-20231201_testing_buy",
+      "previous_id": "20221201-20231201_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20221201-20231201"
+    },
+    {
+      "id": "20221201-20231201_testing_sell",
+      "previous_id": "20221201-20231201_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20221201-20231201"
+    },
+    {
+      "id": "20230101-20240101_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20230101-20240101",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20230101-20240101_optimize_buy",
+      "previous_id": "20230101-20240101_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20230101-20240101",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20230101-20240101_optimize_sell",
+      "previous_id": "20230101-20240101_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20230101-20240101",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20230101-20240101_testing_buy",
+      "previous_id": "20230101-20240101_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20230101-20240101"
+    },
+    {
+      "id": "20230101-20240101_testing_sell",
+      "previous_id": "20230101-20240101_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20230101-20240101"
+    },
+    {
+      "id": "20230201-20240201_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20230201-20240201",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20230201-20240201_optimize_buy",
+      "previous_id": "20230201-20240201_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20230201-20240201",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20230201-20240201_optimize_sell",
+      "previous_id": "20230201-20240201_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20230201-20240201",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20230201-20240201_testing_buy",
+      "previous_id": "20230201-20240201_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20230201-20240201"
+    },
+    {
+      "id": "20230201-20240201_testing_sell",
+      "previous_id": "20230201-20240201_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20230201-20240201"
+    },
+    {
+      "id": "20230301-20240301_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20230301-20240301",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20230301-20240301_optimize_buy",
+      "previous_id": "20230301-20240301_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20230301-20240301",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20230301-20240301_optimize_sell",
+      "previous_id": "20230301-20240301_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20230301-20240301",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20230301-20240301_testing_buy",
+      "previous_id": "20230301-20240301_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20230301-20240301"
+    },
+    {
+      "id": "20230301-20240301_testing_sell",
+      "previous_id": "20230301-20240301_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20230301-20240301"
+    },
+    {
+      "id": "20230401-20240401_generate",
+      "type": "hyperopt_generate",
+      "timerange": "20230401-20240401",
+      "epochs": 1600,
+      "spaces": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "20230401-20240401_optimize_buy",
+      "previous_id": "20230401-20240401_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20230401-20240401",
+      "epochs": 320,
+      "spaces": [
+        "buy"
+      ]
+    },
+    {
+      "id": "20230401-20240401_optimize_sell",
+      "previous_id": "20230401-20240401_generate",
+      "type": "hyperopt_optimize",
+      "timeframe_detail": "1h",
+      "timerange": "20230401-20240401",
+      "epochs": 320,
+      "spaces": [
+        "sell"
+      ]
+    },
+    {
+      "id": "20230401-20240401_testing_buy",
+      "previous_id": "20230401-20240401_optimize_buy",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20230401-20240401"
+    },
+    {
+      "id": "20230401-20240401_testing_sell",
+      "previous_id": "20230401-20240401_optimize_sell",
+      "type": "backtesting",
+      "timeframe_detail": "30m",
+      "timerange": "20230401-20240401"
+    }
+  ]
+}
