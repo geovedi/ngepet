@@ -1,17 +1,12 @@
-//+------------------------------------------------------------------+
-//|                                                 TradeHistory.mqh |
-//|                                      Copyright 2021, Jim Geovedi |
-//|                                          https://jim.geovedi.com |
-//+------------------------------------------------------------------+
 
 #include <Arrays\ArrayLong.mqh>
 #include <Generic\HashSet.mqh>
 #include <Trade\DealInfo.mqh>
 #include <Trade\HistoryOrderInfo.mqh>
 
-#include "TradeTools.mqh"
+CSymbolInfo symbol_info;
 
-void ExportTradeHistory(string fname, int min_level = 0) {
+void ExportTradeHistory(string fname) {
   if (fname == "")
     return;
 
@@ -23,65 +18,63 @@ void ExportTradeHistory(string fname, int min_level = 0) {
     return;
   }
 
-  FileWrite(handle, "Ticket",             //
-            "Symbol", "Action", "Volume", //
-            "OpenTime", "OpenPrice",      //
-            "CloseTime", "ClosePrice",    //
-            "SL", "TP",                   //
-            "CommSwap", "ProfitLoss",     //
+  FileWrite(handle, 
+            "Ticket", "Symbol", "Type", 
+            "Open Time", "Open Price",
+            "Volume",     
+            "Close Time", "Close Price",   
+            "Stop Loss", "Take Profit",                  
+            "Commission", "Profit/Loss",    
             "Comment");
 
-  CHistoryPositionInfo hist_position;
+  CHistoryPositionInfo hp;
 
   datetime start_date = StringToTime("1970.01.01 00:00");
   datetime end_date = TimeCurrent();
 
-  if (!hist_position.HistorySelect(start_date, end_date)) {
+  if (!hp.HistorySelect(start_date, end_date)) {
     PrintFormat("[ERROR] %s(): Failed to select history from %s to %s",
                 __FUNCTION__, TimeToString(start_date), TimeToString(end_date));
     return;
   }
 
-  int total = hist_position.PositionsTotal();
+  int total = hp.PositionsTotal();
   for (int i = 0; i < total; i++) {
-    if (hist_position.SelectByIndex(i)) {
-      datetime time_open = hist_position.TimeOpen();
-      datetime time_close = hist_position.TimeClose();
-      long type = hist_position.PositionType();
-      string type_desc = hist_position.TypeDescription();
-      long magic = hist_position.Magic();
-      long pos_id = hist_position.Identifier();
-      double volume = hist_position.Volume();
-      double price_open = hist_position.PriceOpen();
-      double price_close = hist_position.PriceClose();
-      double commission = hist_position.Commission();
-      double swap = hist_position.Swap();
-      double profit = hist_position.Profit();
-      string symbol = hist_position.Symbol();
-      string open_comment = hist_position.OpenComment();
-      string close_comment = hist_position.CloseComment();
-      string open_reason_desc = hist_position.OpenReasonDescription();
-      string close_reason_desc = hist_position.CloseReasonDescription();
-      string deal_tickets = hist_position.DealTickets(",");
+    if (hp.SelectByIndex(i)) {
+      datetime time_open = hp.TimeOpen();
+      datetime time_close = hp.TimeClose();
+      long type = hp.PositionType();
+      string type_desc = hp.TypeDescription();
+      long magic = hp.Magic();
+      long pos_id = hp.Identifier();
+      double volume = hp.Volume();
+      double price_open = hp.PriceOpen();
+      double price_close = hp.PriceClose();
+      double commission = hp.Commission();
+      double swap = hp.Swap();
+      double profit = hp.Profit();
+      string symbol = hp.Symbol();
+      string open_comment = hp.OpenComment();
+      string close_comment = hp.CloseComment();
+      string open_reason_desc = hp.OpenReasonDescription();
+      string close_reason_desc = hp.CloseReasonDescription();
+      string deal_tickets = hp.DealTickets(",");
       int deals_count = HistoryDealsTotal();
 
       ushort sep = StringGetCharacter(" ", 0);
       string sltp[];
 
-      double price_sl = hist_position.StopLoss();
+      double price_sl = hp.StopLoss();
       if (price_sl == 0 && close_reason_desc == "sl") {
         StringSplit(close_comment, sep, sltp);
         price_sl = StringToDouble(sltp[1]);
       }
 
-      double price_tp = hist_position.TakeProfit();
+      double price_tp = hp.TakeProfit();
       if (price_tp == 0 && close_reason_desc == "tp") {
         StringSplit(close_comment, sep, sltp);
         price_tp = StringToDouble(sltp[1]);
       }
-
-      if ((int)open_comment < min_level)
-        continue;
 
       symbol_info.Name(symbol);
       int digits = (int)symbol_info.Digits();
@@ -91,24 +84,32 @@ void ExportTradeHistory(string fname, int min_level = 0) {
       FileWrite(handle,                                //
                 pos_id,                                // Ticket
                 symbol,                                // Symbol
-                type_desc,                             // Action
+                type_desc,                             // Type
+                (string)time_open,                     // Open Time
+                DoubleToString(price_open, digits),    // Open Price
                 DoubleToString(volume, volume_digits), // Volume
-                (string)time_open,                     // OpenTime
-                DoubleToString(price_open, digits),    // OpenPrice
-                (string)time_close,                    // CloseTime
-                DoubleToString(
-                    price_close,
-                    (deals_count == 2 ? digits : digits + 3)), // ClosePrice
-                DoubleToString(price_sl, digits),              // SL
-                DoubleToString(price_tp, digits),              // TP
-                DoubleToString((2 * commission) + swap, 2),    // CommSwap
-                DoubleToString(profit, 2),                     // ProfitLoss
+                (string)time_close,                    // Close Time
+                DoubleToString(price_close, (deals_count == 2 ? digits : digits + 3)), // Close Price
+                DoubleToString(price_sl, digits),              // Stop Loss
+                DoubleToString(price_tp, digits),              // Take Profit
+                DoubleToString((2 * commission) + swap, 2),    // Commission
+                DoubleToString(profit, 2),                     // Profit/Loss
                 open_comment                                   // Comment
       );
     }
   }
 
   FileClose(handle);
+}
+
+int GetDigits(double var, int digits = 8) {
+  string value = DoubleToString(var, digits); // 0.01000000
+  int pad = StringLen(value) - 1;
+  while (StringGetCharacter(value, pad) == '0') {
+    digits--;
+    pad--;
+  }                // 0.01
+  return (digits); // 2
 }
 
 string TimeElapsedToString(const datetime pElapsedSeconds) {
